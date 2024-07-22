@@ -166,7 +166,7 @@ data_process_EA_WQ_gcms_with_NUTS <- function(fp_gcms_withNUTS = './datasets/EA_
 
 
 # Create a data frame for colour-blind friendly LCM colour palette with the RGB values and class names
-color_data <- data.frame(
+color_data_CBfriendly <- data.frame(
   Class = c("Broadleaved woodland", "Coniferous woodland", "Arable", "Improved grassland", "Neutral grassland",
             "Calcareous grassland", "Acid grassland", "Fen, Marsh and Swamp", "Heather and shrub",
             "Heather grassland", "Bog", "Inland rock", "Saltwater", "Freshwater", "Supralittoral rock",
@@ -183,4 +183,18 @@ color_data <- data.frame(
 # legend_colors <- color_data$RGB
 # legend_labels <- color_data$Class
 
+# colouring Land Cover Map classes: must convert to factor data
+# https://rstudio.github.io/leaflet/articles/colors.html#coloring-categorical-data
+
+
+# from here: cat ../rstudio-birdchem/assets/landcovermap-2020-25m-rasterised-land-parcels-gb-v1/supporting-docs/LCMcolours_QGIS.qml
+color_data <- data.frame(
+  Class = c("Broadleaved woodland", "Coniferous woodland", "Arable", "Improved grassland", "Neutral grassland",
+            "Calcareous grassland", "Acid grassland", "Fen, marsh and swamp", "Heather",
+            "Heather grassland", "Bog", "Inland rock", "Saltwater", "Freshwater", "Supralittoral rock",
+            "Supralittoral sediment", "Littoral rock", "Littoral sediment", "Saltmarsh", "Urban", "Suburban"),
+  RGB = c("#E10000", "#006600", "#732600", "#00ff00", "#7fe57f", "#70a800", "#998100", "#ffff00",
+          "#801a80", "#e68ca6", "#008073", "#d2d2ff", "#000080", "#0000FF", "#CCAA00", "#CCB300",
+          "#FFFF80", "#FFFF80", "#8080ff", "#000000", "#808080")
+)
 
