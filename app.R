@@ -1,384 +1,342 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
-# 
-# Here are the links to WMS tile layers that we can add
-# 
-# SEPA Marine etc. -- not OK, some issues with naming
-# 
-# https://spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/61a675be-a5a7-4e8f-8068-b0cb8f5e8cbb
-# 
-# LCM 2018--OK
-# https://catalogue.ceh.ac.uk/documents/032da3fa-10ba-42cc-b719-b19b6dfd11f5
-
 library(shiny)
 library(bslib)
 library(leaflet)
+library(DT)
+library(raster)
+library(dplyr)
 library(leaflet.extras)
 library(shinyWidgets)
-library(raster)
 library(readxl)
-library(dplyr)
 library(sp)
 library(sf)
-library(DT)
 library(plotly)
-#library(sortable)
 
-# use renv::install('<pakcage name>') to install more packages
+source('data_fun.R')
+source('map_fun.R')
 
+source('modules/data_modules.R') # would call data_fun.R
+source('modules/slider_UI.R')
 source('theme_elements.R')
-source("data_fun.R")
 
+data(quakes)
 
 rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://brandroom.ceh.ac.uk/sites/default/files/images/theme/UKCEH-Logo_Long_Pos_RGB_720x170.png" width="auto" height="40"> </a>')
 
 
-# Define UI for application that draws a histogram
-ui <- fluidPage(
-    #theme
-    theme = UKCEH_theme,  # << add this line
-    # Application title
-    UKCEH_titlePanel("Chemical Pollution and the Environment"),
-    
-    tabsetPanel(
-      tabPanel("Introduction",
-               p(),
-               p('Placeholder for text/image/video to explain the case study and the app')
-               #includeHTML('data_source.html')
-      ),
-      tabPanel("Overview",
-        hr(),
-        # Sidebar with a slider input for number of bins 
-        sidebarLayout(
-            sidebarPanel(
-              h4(""), hr(),
-                # sliderInput("bins",
-                #             "Number of bins:",
-                #             min = 1,
-                #             max = 50,
-                #             value = 30),
-           
-            p("Menu:"),
-            prettySwitch(inputId = "switch1", label = "Map layer view"),
-            prettySwitch(inputId = "switch2", label = "Land use view"),
-            p("Search by location:"),
-            selectInput("country_choice", "Choose country:",
-                        c("England" = "ENG",
-                          "Northern Ireland"="NI",
-                          "Scotland" = "SCOT",
-                          "Wales" = "WAL")),
-            # selectInput("region_choice", "Choose a state:",
-            #             list(`East Coast` = list("NY", "NJ", "CT"),
-            #                  `West Coast` = list("WA", "OR", "CA"),
-            #                  `Midwest` = list("MN", "WI", "IA"))
-            # ),
-            searchInput(
-              inputId = "gridref_choice", 
-              label = "Enter your grid reference :", 
-              placeholder = "SD821672", 
-              btnSearch = icon("search"), 
-              btnReset = icon("remove"), 
-              width = "100%"
-            )
-          ),
-            
-            # Show a plot of the generated distribution
-            mainPanel(
-              leafletOutput("mymap", height = '150%'),
-              p(),
-               # plotOutput("distPlot")
-            )
-        )
-      ),
-      tabPanel("Point data",
-               h3("Pollutant point data"),
-               sidebarLayout(
-                 sidebarPanel(
-                   actionButton('add_dataset_btn','Add a dataset',class='btn-primary', icon("paper-plane")),
-                   actionButton('add_dataset_btn','Remove a dataset',class='btn-warning', icon("xmark")),
-                   wellPanel(
-                     selectInput("data_choice", "Choose dataset:", 
-                                 choices = c("EA water quality GCMS data", "EA pollution inventory 2021")),
-                     uiOutput("dynamic_select") #,
-                     # selectInput("gcms_compound", "Choose compound:",
-                     #             c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-                     #             ),
-                     # selectInput("substance", "Choose pollutant:", 
-                     #             c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)" )
-                     #            ),
-                   
-                   )
-                   ),
-                 mainPanel(
-                   verticalLayout(
-                     leafletOutput("pollutant_map"),
-                     plotlyOutput("plot")
-                   ),
-                 )
-               )
-      ),
-      tabPanel("Data table",
-               h3("Selected data"),
-               DTOutput("outputTable"),
-               style = "width: 1200px;"
-        
-      ),
-      tabPanel("Data sources",
-         #includeHTML('data_source.html')
-      ),
-    )
-)  
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
+link_shiny <- tags$a(shiny::icon("github"), "Code", href = "https://github.com/NERC-CEH/sli_visualTool", target = "_blank")
+link_posit <- tags$a(shiny::icon("book"), "Documentation", href = "https://github.com/NERC-CEH/sli_visualTool", target = "_blank")
+
+# # import LCM
+# gb_lcm_1km_dom_tar <- raster("./datasets/LCM/gb2021lcm1km_dominant_target.tif")
+# gb_lcm_1km_dom_tar[gb_lcm_1km_dom_tar == 0] <- NA
+# gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target = gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target %>% as.factor()
+# factpal <- colorFactor(color_data$RGB, values(gb_lcm_1km_dom_tar), na.color = 'transparent')
+# 
+# # NUTS processing is slow
+# CompoundName <-  "Phenanthrene"
+# NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
+# NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
+# 
+
+
+ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
+                    #theme = bs_theme(version = 5),
+                    theme = UKCEH_theme,  # << add this line
+                    #Application title
+                    UKCEH_titlePanel("Chemcial Pollution and the Environment"),
+                    #h1('Chemcial Pollution and the Environment'),
+                    # or use page_navbar
+                    navset_underline(
+                      nav_panel(title = "Spatial Trends", 
+                                card(
+                                  #card_header("Card with sidebar"),
+                                  layout_sidebar(
+                                    sidebar = sidebar(width = 400,
+                                                      accordion(
+                                                        div(id="placeholder"),
+                                                        multiple = TRUE
+                                                      ),
+                                                      actionButton("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
+                                                      actionButton("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
+                                                      actionButton("updateBtn", "Update map", class = "btn-success",width = '100%')
+                                    ),
+                                    navset_card_underline(
+                                      # title = "Visualizations",
+                                      nav_spacer(),
+                                      
+                                      nav_panel("Map",
+                                                
+                                                leafletOutput('myMap',height = 900),
+                                                accordion(
+                                                  accordion_panel(
+                                                    "Map controls",
+                                                    "Coming soon"
+                                                  ),
+                                                  open=FALSE
+                                                )
+                                      ),
+                                      nav_panel("Table", 
+                                                verbatimTextOutput("out"),
+                                                verbatimTextOutput("out2"),
+                                                accordion(
+                                                  div(id="placeholder-table"),
+                                                  multiple = TRUE
+                                                )
+                                      )
+                                      
+                                    )
+                                  )
+                                )),
+                      nav_panel(title = "Indicator", 
+                                card(
+                                  layout_sidebar(
+                                    sidebar = sidebar(width = 400,
+                                                      selectInput("RegtionOption", "Choose indicator:",
+                                                                  'Chemical Pollution Indicator'
+                                                      )
+                                    ),
+                                    leafletOutput('regionMap',height = 900) 
+                                  )
+                                )
+                      ),
+                      nav_panel(title = "Time series", 
+                                card(
+                                  #card_header("Card with sidebar"),
+                                  layout_sidebar(
+                                    sidebar = sidebar(width = 400,
+                                                      accordion(
+                                                        div(id="placeholder-ts"),
+                                                        multiple = TRUE
+                                                      ),
+                                                      actionButton("insertBtnTS", "Add dataset",width = '100%', class = "btn-primary"),p(),
+                                                      actionButton("removeBtnTS", "Remove dataset", class = "btn-warning",width = '100%'),p(),
+                                                      actionButton("updateBtnTS", "Update map", class = "btn-success",width = '100%')
+                                    ),
+                                    navset_card_underline(
+                                      # title = "Visualizations",
+                                      nav_spacer(),
+                                      nav_panel("Table", 
+                                                verbatimTextOutput("out-ts"),
+                                                verbatimTextOutput("out2-ts"),
+                                                accordion(
+                                                  div(id="placeholder-ts-table"),
+                                                  multiple = TRUE
+                                                )
+                                      ),
+                                      nav_panel("Plot",
+                                                # add plot
+                                                p('Plot coming soon'),
+                                                accordion(
+                                                  accordion_panel(
+                                                    "Plot controls",
+                                                    "Coming soon"
+                                                  ),
+                                                  open=FALSE
+                                                )
+                                      )
+                                      
+                                    )
+                                  )
+                                )),
+                      nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900)), p(),p(),p(),hr(),
+                      nav_spacer(),
+                      nav_menu(
+                        title = "Links",
+                        nav_item(link_shiny),
+                        nav_item(link_posit)
+                      )
+                    )
+)
+
+
+server <- function(input, output, session) {
+  ui_handler <- reactiveVal(list()) #stores the reactive UI 
+  df_handler <- reactiveVal(list()) #store the reactive dataframes as list
+  inserted_ids <- c()  #list of dynamic UI ids
   
-    # import LCM
-    gb_lcm_1km_dom_tar <- raster("./datasets/LCM/gb2021lcm1km_dominant_target.tif")
-    gb_lcm_1km_dom_tar[gb_lcm_1km_dom_tar == 0] <- NA
-    gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target = gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target %>% as.factor() # important for colour mapping to work!
+  # storage of point datasets
+  reactive_df <- reactiveValues(data = NULL)
+  
+  # observer to insert UI for another dataset (point data on map)
+  observeEvent(input$insertBtn, {
+    if (length(inserted_ids) <5) {
+      #new_id <- paste("dat1_ctrl", input$insertBtn, sep = "_")  # based on counter hit
+      new_id_ii <- length(inserted_ids)+1
+      new_id <- paste("dat1_ctrl", new_id_ii , sep = "_")
+      
+      ## insert accordion UI
+      insertUI(
+        selector = "#placeholder",
+        where = "beforeBegin",
+        ## wrap element in a div with id for ease of removal
+        ui = tags$div(
+          datselect_mod_ui(new_id,as.character(new_id_ii)), 
+          id = new_id
+        )
+      )
+      
+      ## insert table UI
+      insertUI(
+        selector = "#placeholder-table",
+        where = "beforeBegin",
+        ## wrap element in a div with id for ease of removal
+        ui = tags$div(
+          DT_mod_ui(paste0(new_id,'_table'),as.character(new_id_ii)), 
+          id = paste0(new_id,'_table')
+        )
+      )
+      
+      ## storing the added UI and data
+      
+      handler_list <- isolate(ui_handler())
+      new_handler <- datselect_mod_server(new_id)
+      handler_list <- c(handler_list, new_handler['return_value'])
+      names(handler_list)[length(handler_list)] <- new_id
+      ui_handler(handler_list)  # important: update the reactive list
+      inserted_ids <<- c(inserted_ids, new_id)
+      print(handler_list)
+      
+      ## Append data
+      # reactive_df[[paste0('data_', new_id_ii)]] <- new_handler[['filtered_data']]
+      # print(isolate(reactive_df[[paste0('data_', new_id_ii)]]))
+      df_list <- isolate(df_handler())
+      df_list <- c(df_list, new_handler['filtered_data'])
+      names(df_list)[length(df_list)] <- new_id
+      df_handler(df_list)
+      
+      print(df_handler())
+      
+      DT_mod_server(paste0(new_id,'_table'), df_handler()[[new_id]])
+      #DT_mod_server(paste0(new_id,'_table'), mtcars)
+      
+    } else {
+      shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
+    }
+  })
+  
+  # observer to remove UI
+  observeEvent(input$removeBtn, {
+    print(inserted_ids)
+    removeUI(
+      ## pass in appropriate div id, for data selector
+      selector = paste0('#', inserted_ids[length(inserted_ids)])
+    )
+    removeUI( 
+      ## pass in appropriate div id, for data table
+      selector = paste0('#',inserted_ids[length(inserted_ids)], '_table')
+    )
+    # remove associated datasets
+    reactive_df[[inserted_ids[length(inserted_ids)]]] <- NULL
     
-    CompoundName <-  "Phenanthrene"
-    NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
-    NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
+    # remove the id from list
+    inserted_ids <<- inserted_ids[-length(inserted_ids)]
     
-    # LCM colour paletted
-    factpal <- colorFactor(color_data$RGB, values(gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target), na.color = "transparent")
     
-    output$mymap <- renderLeaflet({
-      leaflet() %>%
-        addTiles() %>%
-        addPolygons(
-          data = NUTS_region_with_gcms_data,
-          fillColor = ~colorQuantile("viridis", mean_concentration)(mean_concentration),
-          fillOpacity = 0.6,
-          weight = 1,
-          color = "white",
-          popup = ~paste("Compound: ", CompoundName, "<br>",
-                         "Mean Concentration: ", round(mean_concentration, 2), "<br>",
-                         "NUTS ID: ", NUTS_ID),
-          group = "NUTS Level 1"
-        ) %>% 
+  })
+  
+  
+  output$out <- renderPrint({
+    lapply(ui_handler(), function(handle) {
+      handle()
+    })
+    #print('blah blah blah')
+  })
+  output$out2 <- renderPrint({
+    lapply(df_handler(), function(handle) {
+      handle()
+    })
+  })
+  
+  ### leaflet map for point data #####
+  map = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6) 
+  output$myMap = renderLeaflet(map)
+  
+  observeEvent(input$updateBtn, {
+    m = leafletProxy("myMap") %>%
+      clearShapes() %>% 
+      clearControls() %>% 
+      clearMarkers() #%>% 
+    #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
+    
+    # unpack the reactive list 
+    df_list <- lapply(df_handler(), function(handle) {
+      handle()
+    })
+    handler_list <- lapply(ui_handler(), function(handle) {
+      handle()
+    })
+    
+    if (length(inserted_ids) > 0) {  
+      for (new_id_ii in 1:length(inserted_ids)){
+        new_id = paste("dat1_ctrl", new_id_ii , sep = "_")
+        m = m %>%
+          addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
         
-        addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.65, color = factpal,
-                       group = "LCM 2021 1km dominant target"
-                       ) %>%
-        addProviderTiles(providers$Stadia.StamenTonerLite,
-                         options = providerTileOptions(noWrap = TRUE) 
-        ) %>% 
-          # addWMSTiles('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetCapabilities&service=WMS',
-          #             layers='12',
-          #             options = WMSTileOptions(crs=27700,opacity=0.5),
-          #             group = 'Scottish coastal areas') %>%  # have some trouble displaying, naming issues.
-          # addWMSLegend('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetLegendGraphic%26version=1.3.0%26format=image/png%26layer=12') %>% 
-          addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
-                      layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
-                      options = WMSTileOptions(crs=27700,opacity=0.5),
-                      group = 'IHU') %>% 
-         ###LCM 25m is too slow to load
-          # addWMSTiles('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?request=getCapabilities&service=WMS&cache=false&',
-          #             layers=c('LC.25m.GB', 'LC.25m.NI'),
-          #             options = WMSTileOptions(crs=27700,opacity=0.5),
-          #             group = 'Land cover map 2018 25m') %>% 
-        #  leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>% 
-        addLegend(
-          position = "bottomright",
-          colors = rgb(t(col2rgb(color_data$RGB)) / 255),
-          labels = color_data$Class, opacity = 1,
-          title = "LCM classes",group = 'LCM 2021 1km dominant target'
-        ) %>%   
-        setView(-2.7, 54.7, zoom = 4.5) %>%
-          # addLegend(pal = pal, values = ~log10(bird_chem_carcass_data_noLocationNA$`BDE 47`), 
-          #           title = ~'Bird BDE conc ng/g\n wet weight',
-          #           #label = c('3.16','10.0','31.6','100.0','316.2'),
-          #           labFormat = labelFormat(prefix = "10^"),
-          #           opacity = 1,   na.label = "Non detected") %>% 
-        
-          addLayersControl(
-            overlayGroups = c("NUTS Level 1", "LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m"),
-            #overlayGroups = c("base" ),
-            options = layersControlOptions(collapsed = FALSE)
-          ) %>%
-          hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>% 
-          addControl(rr, position = "bottomleft") 
-    })
-    
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
-    
-    
-    # tab 2
-    
-    reactive_df <- reactiveValues(data = NULL)
-    result <- data_process_EA_pollution()
-    unique_industry_sector <- result[[2]]
-    
-    
-    # Function to run when Tab 2 is selected
-    observeEvent(input$tabsetPanel, {
-      req(input$tabsetPanel)
-      if(input$tabsetPanel == "Point data") {
-        result <- data_process_EA_pollution()
-        print(result)
-        filtered_data <- result[[1]]
-        unique_industry_sector <- result[[2]]
-        
-        # Update the reactive dataframe
-        reactive_df$data <- filtered_data
-        
-        # update input choices
-        updateSelectInput(session, "substance", choices = unique_industry_sector)
-        }
-    })
-    
-    # choice for which data to plot
-    observeEvent(input$data_choice, {
-      if(input$data_choice == "EA pollution inventory 2021") {
-        output$dynamic_select <- renderUI({
-          selectInput("IndustrySector", "Choose Industry Sector:",
-                      #c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)")
-                      unique_industry_sector
-          )        
-        })
-      } else if(input$data_choice == "EA water quality GCMS data") {
-        output$dynamic_select <- renderUI({
-          tagList(
-            selectInput("gcms_compound", "Choose compound:",
-                        c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-                        ),
-            sliderInput("year_slider", "Select Year Range:",
-                        min = min(2013), max = max(2021), 
-                        value = c("2020", "2021")
-            )
-          
-          )
-        })
-      }
-    })
-    
-    
-    observeEvent(input$IndustrySector, {
-      # Generate the filtered data based on the selected substance
-      result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
-      filtered_data <- result[[1]]
-      
-      # Update the reactive dataframe
-      reactive_df$data <- filtered_data
-      
-      # Generate Leaflet map based on the filtered data
-      output$pollutant_map <- renderLeaflet({
-        leaflet(filtered_data) %>%
-          addTiles() %>%
-          setView(-2.7, 54.7, zoom = 4.5) %>%
-          addControl(html = paste("<h5>", input$IndustrySector, "</h5>", sep = ""), position = "topright") %>%
-          addCircleMarkers(
-            lng = ~Longitude, lat = ~Latitude, radius = ~radius,
-            popup = ~paste(
-              "<b>Substance Name: </b>", substance_name, "<br/>",
-              "<b>Quantity Released: </b>", quantity_released_kg, "kg<br/>",
-              "<b>Sector: </b>", Regulated_Industry_Sector, "<br/>",
-              "<b>Route: </b>", `ROUTE NAME`, "<br/>",
-              sep = ""
-            ),
-            color = "black",   # Outline color
-            fillColor = "blue", # Fill color
-            fillOpacity = 0.5, # Opacity of the fill color
-            weight = 0.5 
-          )
-      })
-    })
-    
-    observeEvent(c(input$year_slider, input$gcms_compound),{
-      filtered_data_gcms <- data_process_EA_WQ_gcms(CompoundName = input$gcms_compound)
-      
-      filtered_data_gcms <- filtered_data_gcms %>% filter(year >= input$year_slider[1], year <= input$year_slider[2])
-      
-      # Update the reactive dataframe
-      reactive_df$data <- filtered_data_gcms
-      
-      # Generate Leaflet map based on the filtered data
-      output$pollutant_map <- renderLeaflet({
-        leaflet(filtered_data_gcms) %>%
-          addTiles() %>%
-          addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5,
-                         colors = color_data$RGB, 
-                         group = "LCM 2021 1km dominant target") %>% 
-          setView(-2.7, 54.7, zoom = 4.5) %>%
-          addControl(html = paste("<h5>", input$gcms_compound, " ", input$year_slider[1], " - ",  input$year_slider[2],  "</h5>", sep = ""), position = "topright") %>%
-          addCircleMarkers(
-            lng = ~Longitude, lat = ~Latitude, radius = ~radius,
-            popup = ~paste(
-              "<b>Compound Name: </b>", Compound_Name, "<br/>",
-              "<b>Concentration: </b>", Concentration, "<br/>",
-              "<b>Unit: </b>", unit, "<br/>",
-              "<b>Sample description: </b>", SMC_DESC, "<br/>",
-              "<b>Date: </b>", Sample_datetime, "<br/>",
-              sep = ""
-            ),
-            color = "black",   # Outline color
-            fillColor = "blue", # Fill color
-            fillOpacity = 0.5, # Opacity of the fill color
-            weight = 0.5 
-          ) %>% 
-        addLayersControl(
-          overlayGroups = c("LCM 2021 1km dominant target"),
-          #overlayGroups = c("base" ),
-          options = layersControlOptions(collapsed = TRUE)
-        ) %>%
-          hideGroup(c("LCM 2021 1km dominant target"))
-      })
-        # addLegend(pal = paste("'", legend_colors, "'", sep = ""), values = legend_labels,
-        #           position = "bottomleft", title = "Land Cover Legend")
-      
-    })
-    
-    
-    observeEvent(input$map_marker_click, {
-      if(input$data_choice == "EA water quality GCMS data") {
-        event <- input$map_marker_click
-        if (!is.null(event)) {
-          clicked_longitude <- event$lng
-          clicked_latitude <- event$lat
-          
-          selected_data <- filtered_data_gcms[filtered_data_gcms$Longitude == clicked_longitude & filtered_data_gcms$Latitude == clicked_latitude, ]
-          
-          selected_data <- selected_data %>%  filter(n() > 1)
-          
-          # Convert datetime string to POSIXct
-          selected_data$Sample_datetime <- as.POSIXct(selected_data$Sample_datetime, format = "%Y-%m-%d %H:%M:%S")
-          
-          selected_data <- selected_data[order(selected_data$Sample_datetime), ]
-          
-          print(selected_data)
-          
-          output$plot <- renderPlotly({
-            plot_ly(selected_data, x = ~Sample_datetime, y = ~Concentration, type = "scatter", mode = "lines+markers") %>%
-              layout(title = "Time Series Plot", xaxis = list(title = "Datetime"), yaxis = list(title = "Concentration"))
-          })
+        if (handler_list[[new_id]] == 'EA water quality GCMS data') {
+          m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]])
+        } else {
+          m = m %>% map_fun_EA_pollution(df_list[[new_id]])
         }
       }
-    })
-    
-    # Render the dataframe in the reactive table
-    output$outputTable  <- renderDT({
-      datatable(reactive_df$data, options = list(scrollX = TRUE))
-    })
-    
+    }
+  })
+  
+  
+  ### indicator map ###
+  
+  regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  #%>% 
+  # addPolygons(
+  #   data = NUTS_region_with_gcms_data,
+  #   fillColor = ~colorQuantile("viridis", mean_concentration)(mean_concentration),
+  #   fillOpacity = 0.6,
+  #   weight = 1,
+  #   color = "white",
+  #   popup = ~paste("Compound: ", CompoundName, "<br>",
+  #                  "Mean Concentration: ", round(mean_concentration, 2), "<br>",
+  #                  "NUTS ID: ", NUTS_ID),
+  #   group = "NUTS Level 1"
+  # ) %>%
+  # 
+  # addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
+  #                group = "LCM 2021 1km dominant target"
+  # ) %>%
+  # addProviderTiles(providers$Stadia.StamenTonerLite,
+  #                  options = providerTileOptions(noWrap = TRUE)
+  # ) %>%
+  # # addWMSTiles('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetCapabilities&service=WMS',
+  # #             layers='12',
+  # #             options = WMSTileOptions(crs=27700,opacity=0.5),
+  # #             group = 'Scottish coastal areas') %>%  # have some trouble displaying, naming issues.
+  # # addWMSLegend('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetLegendGraphic%26version=1.3.0%26format=image/png%26layer=12') %>%
+  # addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
+  #             layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
+  #             options = WMSTileOptions(crs=27700,opacity=0.5),
+  #             group = 'IHU') %>%
+  # # addWMSTiles('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?request=getCapabilities&service=WMS&cache=false&',
+  # #             layers=c('LC.25m.GB', 'LC.25m.NI'),
+  # #             options = WMSTileOptions(crs=27700,opacity=0.5),
+  # #             group = 'Land cover map 2018 25m') %>%
+  # #  leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>%
+  # addLegend(
+  #   position = "bottomright",
+  #   colors = rgb(t(col2rgb(color_data$RGB)) / 255),
+  #   labels = color_data$Class, opacity = 1,
+  #   title = "LCM classes",
+  #   group = "LCM 2021 1km dominant target"
+  # ) %>% 
+  # addLayersControl(
+  #   overlayGroups = c("NUTS Level 1", "LCM 2021 1km dominant target", "IHU"),
+  #   #overlayGroups = c("base" ),
+  #   options = layersControlOptions(collapsed = FALSE)
+  # ) %>%
+  # hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>%
+  # addControl(rr, position = "bottomleft")
+  output$regionMap = renderLeaflet(regionMap)
+  
 }
 
-# Run the application 
-shinyApp(ui = ui, server = server)
+options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
+shinyApp(ui, server)
+
+
