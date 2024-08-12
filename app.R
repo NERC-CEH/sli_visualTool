@@ -29,6 +29,7 @@ library(sp)
 library(sf)
 library(DT)
 library(plotly)
+#library(sortable)
 
 # use renv::install('<pakcage name>') to install more packages
 
@@ -44,15 +45,20 @@ ui <- fluidPage(
     #theme
     theme = UKCEH_theme,  # << add this line
     # Application title
-    UKCEH_titlePanel(""),
+    UKCEH_titlePanel("Chemical Pollution and the Environment"),
     
     tabsetPanel(
+      tabPanel("Introduction",
+               p(),
+               p('Placeholder for text/image/video to explain the case study and the app')
+               #includeHTML('data_source.html')
+      ),
       tabPanel("Overview",
         hr(),
         # Sidebar with a slider input for number of bins 
         sidebarLayout(
             sidebarPanel(
-              h4("Chemical Pollution and the Environment"), hr(),
+              h4(""), hr(),
                 # sliderInput("bins",
                 #             "Number of bins:",
                 #             min = 1,
@@ -85,7 +91,7 @@ ui <- fluidPage(
             
             # Show a plot of the generated distribution
             mainPanel(
-              leafletOutput("mymap"),
+              leafletOutput("mymap", height = '150%'),
               p(),
                # plotOutput("distPlot")
             )
@@ -95,16 +101,21 @@ ui <- fluidPage(
                h3("Pollutant point data"),
                sidebarLayout(
                  sidebarPanel(
-                   selectInput("data_choice", "Choose dataset:", 
-                               choices = c("EA water quality GCMS data", "EA pollution inventory 2021")),
-                   uiOutput("dynamic_select"),
-                   # selectInput("gcms_compound", "Choose compound:",
-                   #             c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-                   #             ),
-                   # selectInput("substance", "Choose pollutant:", 
-                   #             c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)" )
-                   #            ),
-                 ),
+                   actionButton('add_dataset_btn','Add a dataset',class='btn-primary', icon("paper-plane")),
+                   actionButton('add_dataset_btn','Remove a dataset',class='btn-warning', icon("xmark")),
+                   wellPanel(
+                     selectInput("data_choice", "Choose dataset:", 
+                                 choices = c("EA water quality GCMS data", "EA pollution inventory 2021")),
+                     uiOutput("dynamic_select") #,
+                     # selectInput("gcms_compound", "Choose compound:",
+                     #             c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
+                     #             ),
+                     # selectInput("substance", "Choose pollutant:", 
+                     #             c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)" )
+                     #            ),
+                   
+                   )
+                   ),
                  mainPanel(
                    verticalLayout(
                      leafletOutput("pollutant_map"),
@@ -131,11 +142,14 @@ server <- function(input, output) {
     # import LCM
     gb_lcm_1km_dom_tar <- raster("./datasets/LCM/gb2021lcm1km_dominant_target.tif")
     gb_lcm_1km_dom_tar[gb_lcm_1km_dom_tar == 0] <- NA
+    gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target = gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target %>% as.factor() # important for colour mapping to work!
     
     CompoundName <-  "Phenanthrene"
     NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
     NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
     
+    # LCM colour paletted
+    factpal <- colorFactor(color_data$RGB, values(gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target), na.color = "transparent")
     
     output$mymap <- renderLeaflet({
       leaflet() %>%
@@ -152,7 +166,7 @@ server <- function(input, output) {
           group = "NUTS Level 1"
         ) %>% 
         
-        addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5,
+        addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.65, color = factpal,
                        group = "LCM 2021 1km dominant target"
                        ) %>%
         addProviderTiles(providers$Stadia.StamenTonerLite,
@@ -167,17 +181,25 @@ server <- function(input, output) {
                       layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
                       options = WMSTileOptions(crs=27700,opacity=0.5),
                       group = 'IHU') %>% 
+         ###LCM 25m is too slow to load
           # addWMSTiles('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?request=getCapabilities&service=WMS&cache=false&',
           #             layers=c('LC.25m.GB', 'LC.25m.NI'),
           #             options = WMSTileOptions(crs=27700,opacity=0.5),
           #             group = 'Land cover map 2018 25m') %>% 
-          leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>% 
-          setView(-2.7, 54.7, zoom = 4.5) %>%
+        #  leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>% 
+        addLegend(
+          position = "bottomright",
+          colors = rgb(t(col2rgb(color_data$RGB)) / 255),
+          labels = color_data$Class, opacity = 1,
+          title = "LCM classes",group = 'LCM 2021 1km dominant target'
+        ) %>%   
+        setView(-2.7, 54.7, zoom = 4.5) %>%
           # addLegend(pal = pal, values = ~log10(bird_chem_carcass_data_noLocationNA$`BDE 47`), 
           #           title = ~'Bird BDE conc ng/g\n wet weight',
           #           #label = c('3.16','10.0','31.6','100.0','316.2'),
           #           labFormat = labelFormat(prefix = "10^"),
           #           opacity = 1,   na.label = "Non detected") %>% 
+        
           addLayersControl(
             overlayGroups = c("NUTS Level 1", "LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m"),
             #overlayGroups = c("base" ),
@@ -202,11 +224,16 @@ server <- function(input, output) {
     # tab 2
     
     reactive_df <- reactiveValues(data = NULL)
+    result <- data_process_EA_pollution()
+    unique_industry_sector <- result[[2]]
+    
     
     # Function to run when Tab 2 is selected
     observeEvent(input$tabsetPanel, {
-      if(input$tabsetPanel == "Tab 2") {
+      req(input$tabsetPanel)
+      if(input$tabsetPanel == "Point data") {
         result <- data_process_EA_pollution()
+        print(result)
         filtered_data <- result[[1]]
         unique_industry_sector <- result[[2]]
         
@@ -214,7 +241,7 @@ server <- function(input, output) {
         reactive_df$data <- filtered_data
         
         # update input choices
-        updateSelectInput("substance", choices = result[[2]])
+        updateSelectInput(session, "substance", choices = unique_industry_sector)
         }
     })
     
@@ -237,7 +264,6 @@ server <- function(input, output) {
                         min = min(2013), max = max(2021), 
                         value = c("2020", "2021")
             )
-            
           
           )
         })
