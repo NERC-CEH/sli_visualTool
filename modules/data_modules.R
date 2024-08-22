@@ -1,5 +1,6 @@
-source('modules/slider_UI.R')
-source('data_fun.R')
+# required functions for these modules, call them in main app
+source('modules/slider_UI.R') 
+# source('data_fun.R')
 
 
 #' Dataset selection for plot user interface
@@ -9,13 +10,16 @@ source('data_fun.R')
 #' @return a \code{shiny::\link[shiny]{tagList}} containing UI elements
 #' 
 
-datselect_mod_ui <- function(id, dataset_i) {
+dat_choices_pt <- c("EA water quality GCMS data", "EA pollution inventory 2021", "Predatory Bird Monitoring Scheme")
+
+dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
+
+datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
   
   ns <- NS(id)
   
   # define choices for dataset selection
   
-  dat_choices <- c("EA water quality GCMS data", "EA pollution inventory 2021")
   
   accordion_panel( paste0('Dataset ',dataset_i ,':'),
                    selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
@@ -42,9 +46,10 @@ datselect_mod_server_OLD <-  function(id) {
         ea_pollution_sliders(id)
       } else if (type == "EA water quality GCMS data") {
         ea_gcms_sliders(id)
-      }
+      } else if (type =="Predatory Bird Monitoring Scheme")
+        pbms_sliders(id)
     })
-    result <- data_process_EA_pollution()#(IndustrySector = reactive(input$IndustrySector))
+    result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
     filtered_data <- result[[1]]
     
     ## if we later want to do some more sophisticated logic
@@ -73,7 +78,8 @@ datselect_mod_server <-  function(id) {
         ea_pollution_sliders(id)
       } else if (type == "EA water quality GCMS data") {
         ea_gcms_sliders(id)
-      }
+      } else if (type =="Predatory Bird Monitoring Scheme")
+        pbms_sliders(id)
     })
     
     # alternative: 
@@ -84,7 +90,9 @@ datselect_mod_server <-  function(id) {
       } else {
           if(type=='EA pollution inventory 2021') {
             data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
-            #mtcars[1:10,]
+          } else if (type =="Predatory Bird Monitoring Scheme") {
+            data_process_pbms(var_biota = input$var_biota, var_sgar_map_sgl=input$var_sgar_map_sgl, var_metals_map_sgl = input$var_metals_map_sgl)[[1]] %>% 
+              filter(year >= input$year_slider[1], year <= input$year_slider[2])
           } else {
             data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
               filter(year >= input$year_slider[1], year <= input$year_slider[2])

@@ -70,6 +70,58 @@ map_fun_EA_WQ_gcms <- function(map, data){
     )
 }
 
+map_fun_pbms <- function(map, data, 
+                         var_biota = "Otter", 
+                         var_metal_map_sgl = "Cd", 
+                         var_sgar_map_sgl = "ΣSGARs"){
+
+    if(var_biota =='Otter'){
+      
+      metals <- data %>% rename(value = !!var_metal_map_sgl)
+      qpal <- colorBin("Oranges", metals$value, bins = 5, , na.color = 'grey')
+      
+      map %>% 
+        addCircleMarkers(~long, ~lat, data=metals,color = ~qpal(value), group = 'metals') %>%  
+        addLegend("bottomright", data=metals, pal = qpal, values = ~value,
+                  title = "Metals conc. []",
+                  opacity = 1
+        )
+      
+    } else if(var_biota =='Buzzard'){
+      metals <- data %>% rename(value = !!var_metal_map_sgl)
+      SGARs <- data %>% rename(value = !!var_sgar_map_sgl)
+      qpal <- colorBin("Oranges", metals$value, bins = 5, , na.color = 'grey')
+      qpal2 <- colorBin("Blues", SGARs$value, bins = 5, na.color = 'grey')
+      
+      map %>% 
+        addCircleMarkers(~long, ~lat, data=metals, color = ~qpal(value), group = 'metals') %>%  
+        addCircleMarkers(~long, ~lat, data=SGARs,color = ~qpal2(value), group = 'SGARs') %>%  
+        addLayersControl(overlayGroups = c("metals","SGARs")) %>%
+        addLegend("bottomright", data=metals, pal = qpal, values = ~value,
+                  title = "Metals conc. []",
+                  opacity = 1
+        ) %>% 
+        addLegend("bottomright", data=SGARs, pal = qpal2, values = ~value,
+                  title = "SGARs conc. []",
+                  opacity = 1)
+      
+    } else if(var_biota =='Sparrowhawk'){
+      
+      SGARs <- sparrowhawk_SGARs %>% rename(value = !!var_sgar_map_sgl)
+      qpal2 <- colorBin("Blues", SGARs$value, bins = 5, , na.color = 'grey')
+      
+      map %>% 
+        addCircleMarkers(~long, ~lat, data=SGARs,color = ~qpal2(value), group = 'SGARs') %>%  
+        addLayersControl(overlayGroups = c("SGARs")) %>%
+        addLegend("bottomright", data=SGARs, pal = qpal2, values = ~value,
+                  title = "SGARs conc. []",
+                  opacity = 1)
+      
+    } else {
+      map
+    }
+}
+
 switch_map <- function(map, data, input_choice){
   
   return(map)
