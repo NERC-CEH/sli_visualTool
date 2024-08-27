@@ -29,7 +29,7 @@ color_data <- data.frame(
           "#FFFF80", "#FFFF80", "#8080ff", "#000000", "#808080")
 )
 
-map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sector'){
+map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sector',fillColor = "blue"){
   map %>% 
     addControl(html = paste("<h5>", label_IndustrySector, "</h5>", sep = ""), position = "topright") %>%
     addCircleMarkers(
@@ -43,14 +43,14 @@ map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sec
         sep = ""
       ),
       color = "black",   # Outline color
-      fillColor = "blue", # Fill color
+      fillColor = fillColor, # Fill color
       fillOpacity = 0.5, # Opacity of the fill color
       weight = 0.5 
     )
 }
 
 
-map_fun_EA_WQ_gcms <- function(map, data){
+map_fun_EA_WQ_gcms <- function(map, data,fillColor = "blue"){
   map %>% 
   #addControl(html = paste("<h5>", input$gcms_compound, " ", input$year_slider[1], " - ",  input$year_slider[2],  "</h5>", sep = ""), position = "topright") %>%
     addCircleMarkers(
@@ -64,7 +64,7 @@ map_fun_EA_WQ_gcms <- function(map, data){
         sep = ""
       ),
       color = "black",   # Outline color
-      fillColor = "blue", # Fill color
+      fillColor = fillColor, # Fill color
       fillOpacity = 0.5, # Opacity of the fill color
       weight = 0.5 
     )
@@ -83,7 +83,7 @@ map_fun_pbms <- function(map, data,
       map %>% 
         addCircleMarkers(~long, ~lat, data=metals,color = ~qpal(value), group = 'metals') %>%  
         addLegend("bottomright", data=metals, pal = qpal, values = ~value,
-                  title = "Metals conc. []",
+                  title = "Metals conc. [µg/g dry weight]",
                   opacity = 1
         )
       
@@ -98,11 +98,11 @@ map_fun_pbms <- function(map, data,
         addCircleMarkers(~long, ~lat, data=SGARs,color = ~qpal2(value), group = 'SGARs') %>%  
         addLayersControl(overlayGroups = c("metals","SGARs")) %>%
         addLegend("bottomright", data=metals, pal = qpal, values = ~value,
-                  title = "Metals conc. []",
+                  title = "Metals conc. [µg/g dry weight]",
                   opacity = 1
         ) %>% 
         addLegend("bottomright", data=SGARs, pal = qpal2, values = ~value,
-                  title = "SGARs conc. []",
+                  title = "SGARs conc. [ng/g wet weight]",
                   opacity = 1)
       
     } else if(var_biota =='Sparrowhawk'){
@@ -114,7 +114,7 @@ map_fun_pbms <- function(map, data,
         addCircleMarkers(~long, ~lat, data=SGARs,color = ~qpal2(value), group = 'SGARs') %>%  
         addLayersControl(overlayGroups = c("SGARs")) %>%
         addLegend("bottomright", data=SGARs, pal = qpal2, values = ~value,
-                  title = "SGARs conc. []",
+                  title = "SGARs conc. [ng/g wet weight]",
                   opacity = 1)
       
     } else {

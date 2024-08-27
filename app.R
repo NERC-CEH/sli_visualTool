@@ -13,12 +13,13 @@ library(readxl)
 library(sp)
 library(sf)
 library(plotly)
+library(rnrfa) # for osg_parse
+library(readr)
 
 source('data_fun.R')
 source('map_fun.R')
 source('modules/data_modules.R')
 source('theme_elements.R')
-
 data(quakes)
 
 rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://brandroom.ceh.ac.uk/sites/default/files/images/theme/UKCEH-Logo_Long_Pos_RGB_720x170.png" width="auto" height="40"> </a>')
@@ -77,6 +78,12 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                                   open=FALSE
                                                 )
                                       ),
+                                      nav_panel("Plot",
+                                                accordion(
+                                                  div(id="placeholder-plots"),
+                                                  multiple = TRUE
+                                                )
+                                      ),
                                       nav_panel("Table", 
                                                 verbatimTextOutput("out"),
                                                 verbatimTextOutput("out2"),
@@ -112,29 +119,28 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                                       ),
                                                       actionButton("insertBtn_TS", "Add dataset",width = '100%', class = "btn-primary"),p(),
                                                       actionButton("removeBtn_TS", "Remove dataset", class = "btn-warning",width = '100%'),p(),
-                                                      actionButton("updateBtn_TS", "Update plot", class = "btn-success",width = '100%')
+                                                      actionButton("updateBtn_TS", "Update map", class = "btn-success",width = '100%')
                                     ),
                                     navset_card_underline(
                                       # title = "Visualizations",
                                       nav_spacer(),
-                                      nav_panel("Plot",
-                                                # add plot
-                                                p('Plot coming soon.'),
-                                                plotOutput("plot_TS"),
-                                                accordion(
-                                                  accordion_panel(
-                                                    "Plot controls",
-                                                    "Coming soon"
-                                                  ),
-                                                  open=FALSE
-                                                )
-                                      ),
                                       nav_panel("Table", 
                                                 verbatimTextOutput("out_ts"),
                                                 verbatimTextOutput("out2_ts"),
                                                 accordion(
                                                   div(id="placeholder-table-ts"),
                                                   multiple = TRUE
+                                                )
+                                      ),
+                                      nav_panel("Plot",
+                                                # add plot
+                                                p('Plot coming soon'),
+                                                accordion(
+                                                  accordion_panel(
+                                                    "Plot controls",
+                                                    "Coming soon"
+                                                  ),
+                                                  open=FALSE
                                                 )
                                       )
                                       
@@ -191,6 +197,20 @@ server <- function(input, output, session) {
         )
       )
       
+      ## insert plots UI
+      insertUI(
+        selector = "#placeholder-plots",
+        where = "beforeBegin",
+        ## wrap element in a div with id for ease of removal
+        ui = tags$div(
+          accordion_panel(
+            paste0('Plot for dataset ',new_id_ii ,':'),
+            plot_mod_ui(paste0(new_id,'_plots'),as.character(new_id_ii)), 
+            id = paste0(new_id,'_plots')
+          )
+        )
+      )
+      
       ## storing the added UI and data
       
       handler_list <- isolate(ui_handler())
@@ -211,9 +231,9 @@ server <- function(input, output, session) {
       
       print(df_handler())
       
-      DT_mod_server(paste0(new_id,'_table'), df_handler()[[new_id]])
+      DT_mod_server(paste0(new_id,'_table'), df_handler()[[new_id]])  # table module
       #DT_mod_server(paste0(new_id,'_table'), mtcars)
-      
+      plot_mod_server(paste0(new_id,'_plots'), df_handler()[[new_id]])
     } else {
       shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
     }
@@ -230,6 +250,11 @@ server <- function(input, output, session) {
       ## pass in appropriate div id, for data table
       selector = paste0('#',inserted_ids[length(inserted_ids)], '_table')
     )
+    removeUI( 
+      ## pass in appropriate div id, for data table
+      selector = paste0('#',inserted_ids[length(inserted_ids)], '_plots')
+    )
+    
     # remove associated datasets
     reactive_df[[inserted_ids[length(inserted_ids)]]] <- NULL
     
@@ -378,46 +403,16 @@ server <- function(input, output, session) {
           addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
         
         if (handler_list[[new_id]] == 'EA water quality GCMS data') {
-          m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]])
-        } else {
-          m = m %>% map_fun_EA_pollution(df_list[[new_id]])
+          m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+        } else if (handler_list[[new_id]] == 'EA pollution inventory 2021') {
+          m = m %>% map_fun_EA_pollution(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+        } else if (handler_list[[new_id]] == 'Predatory Bird Monitoring Scheme') {
+          m = m %>% map_fun_pbms(df_list[[new_id]])
         }
       }
     }
   })
   
-  
-  #### Time series plot ####
-  output$plot_TS <- renderPlot({ggplot()})
-  
-  observeEvent(input$updateBtn_TS, {
-    if (length(inserted_ids) > 0) {  
-      for (new_id_ii in 1:length(inserted_ids)){
-        new_id = paste("datTS_ctrl", new_id_ii , sep = "_")
-       
-        # unpack the reactive list 
-        df_list <- lapply(df_handler(), function(handle) {
-          handle()
-        })
-        handler_list <- lapply(ui_handler(), function(handle) {
-          handle()
-        })
-        
-        #if (handler_list[[new_id]] == 'EA water quality GCMS data') {
-        if (handler_list[[new_id]] == 'EA water quality GCMS data') {
-          output$plot_TS <- renderPlot({ggplot() + 
-              geom_point(data = df_list[[new_id]], x = year, y=Concentration_norm)
-            
-            
-            })
-          
-        } else {
-          output$plot_TS <- renderPlot({ggplot()})
-          
-        }
-      }
-    }
-  })
   
   ### indicator map ###
   

@@ -34,7 +34,7 @@ pbms_sliders <- function(id) {
                   animate = TRUE,
                   value = c("2005", "2015")
       ),
-      selectInput(NS(id,'var_sgar_map_sgl'), 'Choose a SGARs speices:', choices = SGARs_choices, selected = NULL, multiple = FALSE),
-      selectInput(NS(id,'var_metal_map_sgl'), 'Choose a metal spcies:', choices = metals_choices, multiple = FALSE)
+      selectInput(NS(id,'var_sgar_map_sgl'), 'Choose a SGARs species:', choices = SGARs_choices, selected = NULL, multiple = FALSE),
+      selectInput(NS(id,'var_metal_map_sgl'), 'Choose a metal species:', choices = metals_choices, multiple = FALSE)
   )
 }
