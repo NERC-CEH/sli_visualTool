@@ -1,6 +1,47 @@
 # function to take EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx and chosen polluting substance 
 # and return filtered dataframe with lat lon values and normalised data for plotting on map
-data_process_EA_pollution <- function(file_path = './datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx', IndustrySector = 'Agriculture', substance = "all") {
+
+# define variables, maybe move to global.R
+
+metals_choices <- c('Cd','Pb','Hg')
+SGARs_choices <- c('Bromadiolone', 'Difenacoum', 'Brodifacoum', 'ΣSGARs' )
+
+
+osg_parse2 <- function(grid_refs) { 
+  # error handling and randomize if only 10km is avail.
+  out <- tryCatch(
+    {
+      # if (nchar == 4) {
+      #   #randomize
+      #   grid_refs = grid_refs
+      # } else{
+      #   grid_refs = grid_refs
+      # }
+      osg_parse(grid_refs)
+    },
+    error=function(cond) {
+      # message("Here's the original error message:")
+      # message(cond)
+      # message("")
+      # print(grid_refs)
+      # Choose a return value in case of error
+      return(list(easting = NA, northing = NA))
+    },
+    warning=function(cond) {
+      # message(paste("URL caused a warning"))
+      # print(grid_refs)
+      return(list(easting = NA, northing = NA))
+    },
+    finally={
+      #message("Some other message at the end")
+    }
+  )
+  
+  return(out)
+}
+
+
+data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx', IndustrySector = 'Agriculture', substance = "all") {
   
   # Read in the data
   fp <- file_path 
@@ -83,13 +124,15 @@ data_process_EA_pollution <- function(file_path = './datasets/EA_pollution_inven
     
   }
   
-  return(list(filtered_data, unique_industry_sector, unique_substance_names))
+  return(list(filtered_data=filtered_data,
+              unique_industry_sector=unique_industry_sector, 
+              unique_substance_names=unique_substance_names))
 }
 
 
 # function to import and process EA WQ data
-data_process_EA_WQ_gcms <- function(fp_gcms = './datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv', CompoundName = "Phenanthrene") {
-
+data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv', CompoundName = "Phenanthrene") {
+  
   data_gcms <- read.csv(fp_gcms)
   
   filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
@@ -111,7 +154,7 @@ data_process_EA_WQ_gcms <- function(fp_gcms = './datasets/EA_water_quality_GCMS_
   # Create logarithmic bins for normalized quantity values
   filtered_data_gcms <- filtered_data_gcms %>%
     mutate(log_Concentration_norm = log(Concentration_norm + 1),  # Adding 1 to avoid taking log of zero
-           bin = cut(log_Concentration_norm, breaks = seq(min(log_Concentration_norm), max(log_Concentration_norm), length.out = num_bins + 1), labels = FALSE))
+           bin = cut(log_Concentration_norm, breaks = seq(min(log_Concentration_norm,na.rm = TRUE), max(log_Concentration_norm,na.rm = TRUE), length.out = num_bins + 1), labels = FALSE))
   
   # Define marker sizes for each bin (logarithmic scale)
   max_size <- 30  # Maximum marker size
@@ -127,9 +170,61 @@ data_process_EA_WQ_gcms <- function(fp_gcms = './datasets/EA_water_quality_GCMS_
     mutate(radius = bin_sizes[bin])
   
   return(filtered_data_gcms)
-
+  
 }
 
+data_process_pbms <- function(var_biota = 'buzzard', 
+                              var_sgar_map_sgl = 'Cd',
+                              var_metals_map_sgl = 'ΣSGARs') {
+  
+  # Read in the data
+  if(var_biota =='Otter'){
+    otter_metals <- read_csv('assets/bio-xter-liver-metal-habitat-uk-otters-2006-2017-v1/data/Concentrations_of_inorganic_elements_in_UK_otter_livers_2006–2017.csv')
+    otter_metals[,c('long','lat')] <-sf_project(from = st_crs(27700), to = st_crs(4326),  otter_metals[,c('X','Y')])
+    otter_metals_long <- otter_metals %>% select(UWCRef,Year, long, lat, !!metals_choices) %>% tidyr::pivot_longer(!!metals_choices)
+    otter_choices <- metals_choices
+    filtered_data = otter_metals %>% rename(year = Year)
+  } else if(var_biota =='Buzzard'){
+    
+    buzzards <- read_excel('datasets/PBMS/20240704_APEX_Buzzard_Data_forMockUp.xlsx',skip=1)
+    metadata1 <-   read_excel('datasets/PBMS/20240704_APEX_Buzzard_Data_forMockUp.xlsx', range = cell_rows(1), .name_repair = 'minimal') %>% 
+      colnames() %>% .[nzchar(.)] %>% print()
+    buzz_XY <-  sapply((buzzards) %>% 
+                         select(`Finest LocationGridRef\r\n(most 6-digit)`) %>% pull(),FUN = osg_parse2) %>% 
+      t() %>% as.data.frame() %>% rename(X=easting, Y=northing) 
+    buzzards <- buzzards %>% mutate(X = unlist(buzz_XY$X), Y = unlist(buzz_XY$Y))
+    buzzards[,c('long','lat')] <-sf_project(from = st_crs(27700), to = st_crs(4326),  buzzards[,c('X','Y')])
+    buzzards_long <- buzzards %>% 
+      mutate(across(where(is.numeric), ~tidyr::replace_na(., 0))) %>% 
+      select(`PBMS ID`,Species, `Collection year`, long, lat, !!c(metals_choices,SGARs_choices)) %>% 
+      tidyr::pivot_longer(!!c(metals_choices,SGARs_choices)) %>% 
+      mutate(group = if_else(name %in% metals_choices, 'metals', 'SGARs'))
+    
+    
+    buzzard_choices <- list(`metals` = metals_choices, `SGARs` = SGARs_choices)
+    filtered_data = buzzards %>% rename(year = `Collection year`)
+    
+  } else if(var_biota =='Sparrowhawk'){
+    
+    # ## Sparrowhawk SGARs, no long lat in EIDC data, ND replaced by NA
+    # sparrowhawk_SGARs <- read_csv("datasets/PBMS/1af003b1-2f70-4e45-a31a-b07a5fe6e929/data/chempop_sparrowhawks_sgars.csv",  na = c("ND"))
+    # ## replace with file from Elaine, with lat lon
+    sparrowhawk_SGARs <- read_csv("datasets/PBMS/Chempop data for shinji_ JNCC_ 2024_SGARs in Eurasian sparrowhawk livers 1995-2015 for Great Britain.csv",  na = c("ND"))
+    sparrowhawk_SGARs[,c('long','lat')] <-sf_project(from = st_crs(27700), to = st_crs(4326),  sparrowhawk_SGARs[,c('EAST','NORTH')])
+    
+    #sparrowhawk_SGARs %>% tidyr::pivot_longer(cols = -c(BIRD,YEAR,REGION,AGE,SEX,Units))
+    sparrowhawk_SGARs_long <- sparrowhawk_SGARs %>% rename(ΣSGARs = Sum_SGAR) %>% tidyr::pivot_longer(cols = Difenacoum:ΣSGARs)
+    sparrowhawk_choices <- SGARs_choices
+    
+    filtered_data = sparrowhawk_SGARs %>% rename(year = YEAR)
+  } else {
+  }
+  
+ 
+    
+  
+  return(list(filtered_data=filtered_data))
+}
 
 get_NUTS_regions <- function(NUTS_lvl_code = 1) {
   library(sf)
@@ -163,38 +258,4 @@ data_process_EA_WQ_gcms_with_NUTS <- function(fp_gcms_withNUTS = './datasets/EA_
   
   return(NUTS_region_with_gcms_data)
 }
-
-
-# Create a data frame for colour-blind friendly LCM colour palette with the RGB values and class names
-color_data_CBfriendly <- data.frame(
-  Class = c("Broadleaved woodland", "Coniferous woodland", "Arable", "Improved grassland", "Neutral grassland",
-            "Calcareous grassland", "Acid grassland", "Fen, Marsh and Swamp", "Heather and shrub",
-            "Heather grassland", "Bog", "Inland rock", "Saltwater", "Freshwater", "Supralittoral rock",
-            "Supralittoral sediment", "Littoral rock", "Littoral sediment", "Saltmarsh", "Urban", "Suburban"),
-  RGB = c("#3E3D32", "#004433", "#ECF2BD", "#FEAA73", "#DFE6EC", "#99C9DD", "#E9D6EC", "#76835C",
-          "#806480", "#B29278", "#9BB291", "#B3B3B3", "#000066", "#0000FF", "#B3B300", "#FFFFB3",
-          "#FFFF00", "#FFFF00", "#0080FF", "#000000", "#808080")
-)
-
-# rgb_vector <- as.character(color_data$RGB)
-# class_vector <- as.character(color_data$Class)
-# 
-# # Define legend colors and labels
-# legend_colors <- color_data$RGB
-# legend_labels <- color_data$Class
-
-# colouring Land Cover Map classes: must convert to factor data
-# https://rstudio.github.io/leaflet/articles/colors.html#coloring-categorical-data
-
-
-# from here: cat ../rstudio-birdchem/assets/landcovermap-2020-25m-rasterised-land-parcels-gb-v1/supporting-docs/LCMcolours_QGIS.qml
-color_data <- data.frame(
-  Class = c("Broadleaved woodland", "Coniferous woodland", "Arable", "Improved grassland", "Neutral grassland",
-            "Calcareous grassland", "Acid grassland", "Fen, marsh and swamp", "Heather",
-            "Heather grassland", "Bog", "Inland rock", "Saltwater", "Freshwater", "Supralittoral rock",
-            "Supralittoral sediment", "Littoral rock", "Littoral sediment", "Saltmarsh", "Urban", "Suburban"),
-  RGB = c("#E10000", "#006600", "#732600", "#00ff00", "#7fe57f", "#70a800", "#998100", "#ffff00",
-          "#801a80", "#e68ca6", "#008073", "#d2d2ff", "#000080", "#0000FF", "#CCAA00", "#CCB300",
-          "#FFFF80", "#FFFF80", "#8080ff", "#000000", "#808080")
-)
 
