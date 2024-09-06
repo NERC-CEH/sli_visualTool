@@ -69,17 +69,13 @@ data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_invento
   names(data)[names(data) == "REGULATED INDUSTRY SECTOR"] <- "Regulated_Industry_Sector"
   
   
-  
   # get unique substance and industry names
   unique_substance_names <- sort(unique(data$substance_name))
   unique_industry_sector <- sort(unique(data$Regulated_Industry_Sector))
   
   # filter for selected  industry section
   filtered_data <- subset(data, Regulated_Industry_Sector == IndustrySector)
-  
   filtered_data <- subset(filtered_data, substance_name == substance | substance == "all")
-  
-  
   
   
   # Filter out rows with NA values in the 'quantity_released_kg' column
@@ -91,36 +87,73 @@ data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_invento
     
   }else{ # filtered_data does have data in quantity_released_kg column
     
-    # Calculate the minimum and maximum values
-    min_value <- min(filtered_data$quantity_released_kg)
-    max_value <- max(filtered_data$quantity_released_kg)
+    # filtered_data <- filtered_data %>%
+    #   # Ensure all values are finite (removing NA, NaN, Inf)
+    #   filter(is.finite(quantity_released_kg)) %>%
+    #   # Check if data is non-empty and not all identical values before proceeding
+    #   mutate(
+    #     log_quantity_released_kg_checked = ifelse(n() > 0, log(quantity_released_kg + 1), NA)
+    #   )
     
-    # Normalize 'quantity_released_kg' to range [0, 1]
+    
+    
     filtered_data <- filtered_data %>%
-      mutate(quantity_released_kg_norm = (quantity_released_kg - min_value) / (max_value - min_value))
+      mutate(quantity_released_tons = quantity_released_kg/1000) %>% 
+      mutate(log_quantity_released_tons = log(quantity_released_tons + 1))
+      
     
-    ## log bins
+    # # Calculate the minimum and maximum values
+    # min_value <- min(filtered_data$quantity_released_kg)
+    # max_value <- max(filtered_data$quantity_released_kg)
+    # 
+    # # Normalize 'quantity_released_kg' to range [0, 1]
+    # filtered_data <- filtered_data %>%
+    #   mutate(quantity_released_kg_norm = (quantity_released_kg - min_value) / (max_value - min_value))
+    # 
+    # ## log bins
+    # 
+    # # Determine the number of bins
+    # num_bins <- 5
+    # 
+    # # # Create logarithmic bins for normalized quantity values
+    # # filtered_data <- filtered_data %>%
+    # #   mutate(log_quantity_released_kg_norm = log(quantity_released_kg_norm + 1),  # Adding 1 to avoid taking log of zero
+    # #          bin = cut(log_quantity_released_kg_norm, breaks = seq(min(log_quantity_released_kg_norm), max(log_quantity_released_kg_norm), length.out = num_bins + 1), labels = FALSE))
+    # # 
+    # 
+    # filtered_data <- filtered_data %>%
+    #   # Ensure all values are finite (removing NA, NaN, Inf)
+    #   filter(is.finite(quantity_released_kg_norm)) %>%
+    #   # Check if data is non-empty and not all identical values before proceeding
+    #   mutate(
+    #     log_quantity_released_kg_norm = ifelse(n() > 0, log(quantity_released_kg_norm + 1), NA)
+    #   ) %>%
+    #   mutate(
+    #     bin = if (n() > 0 && length(unique(log_quantity_released_kg_norm)) > 1) {
+    #       # Proceed with binning if there are more than one unique values
+    #       cut(log_quantity_released_kg_norm, 
+    #           breaks = seq(min(log_quantity_released_kg_norm, na.rm = TRUE), 
+    #                        max(log_quantity_released_kg_norm, na.rm = TRUE), 
+    #                        length.out = num_bins + 1), 
+    #           labels = FALSE)
+    #     } else {
+    #       # If all values are NA or identical, assign NA to bins
+    #       NA
+    #     }
+    #   )
     
-    # Determine the number of bins
-    num_bins <- 5
+    # # Define marker sizes for each bin (logarithmic scale)
+    # max_size <- 50  # Maximum marker size
+    # min_size <- 5   # Minimum marker size
+    # bin_sizes <- seq(min(filtered_data$log_quantity_released_kg_norm), max(filtered_data$log_quantity_released_kg_norm), length.out = num_bins + 1)  # Create logarithmic bins
+    # bin_sizes <- exp(bin_sizes)  # Convert back to original scale
+    # bin_sizes <- pmax(bin_sizes, 1)  # Ensure minimum size is 1
+    # bin_sizes <- (bin_sizes - min(bin_sizes)) / (max(bin_sizes) - min(bin_sizes))  # Normalize to [0, 1]
+    # bin_sizes <- bin_sizes * (max_size - min_size) + min_size  # Scale to desired range
     
-    # Create logarithmic bins for normalized quantity values
-    filtered_data <- filtered_data %>%
-      mutate(log_quantity_released_kg_norm = log(quantity_released_kg_norm + 1),  # Adding 1 to avoid taking log of zero
-             bin = cut(log_quantity_released_kg_norm, breaks = seq(min(log_quantity_released_kg_norm), max(log_quantity_released_kg_norm), length.out = num_bins + 1), labels = FALSE))
-    
-    # Define marker sizes for each bin (logarithmic scale)
-    max_size <- 50  # Maximum marker size
-    min_size <- 5   # Minimum marker size
-    bin_sizes <- seq(min(filtered_data$log_quantity_released_kg_norm), max(filtered_data$log_quantity_released_kg_norm), length.out = num_bins + 1)  # Create logarithmic bins
-    bin_sizes <- exp(bin_sizes)  # Convert back to original scale
-    bin_sizes <- pmax(bin_sizes, 1)  # Ensure minimum size is 1
-    bin_sizes <- (bin_sizes - min(bin_sizes)) / (max(bin_sizes) - min(bin_sizes))  # Normalize to [0, 1]
-    bin_sizes <- bin_sizes * (max_size - min_size) + min_size  # Scale to desired range
-    
-    # Assign marker sizes based on the bins
-    filtered_data <- filtered_data %>%
-      mutate(radius = bin_sizes[bin])
+    # # Assign marker sizes based on the bins
+    # filtered_data <- filtered_data %>%
+    #   mutate(radius = bin_sizes[bin])
     
   }
   
@@ -130,12 +163,19 @@ data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_invento
 }
 
 
-# function to import and process EA WQ data
-data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv', CompoundName = "Phenanthrene") {
+data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv',
+                                    CompoundName = "Phenanthrene",
+                                    start_year = "2019",
+                                    end_year = "2020") {
   
   data_gcms <- read.csv(fp_gcms)
+  #filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
   
-  filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
+  # Filter the data based on the selected criteria
+  filtered_data_gcms <- data_gcms %>%
+    filter(Compound_Name == CompoundName,
+           year >= start_year,
+           year <= end_year)
   
   # Filter out rows with NA values in the 'quantity_released_kg' column
   filtered_data_gcms <- filtered_data_gcms[!is.na(filtered_data_gcms$Concentration), ]
@@ -144,22 +184,113 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   min_value <- min(filtered_data_gcms$Concentration)
   max_value <- max(filtered_data_gcms$Concentration)
   
-  # Normalize 'quantity_released_kg' to range [0, 1]
+  # Create logarithmic bins for normalized quantity values
   filtered_data_gcms <- filtered_data_gcms %>%
-    mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))
+    mutate(log_Concentration = log(Concentration + 1))
+  
+  # # Normalize 'quantity_released_kg' to range [0, 1]
+  # filtered_data_gcms <- filtered_data_gcms %>%
+  #   mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))
+  
+  # # Create logarithmic bins for normalized quantity values
+  # filtered_data_gcms <- filtered_data_gcms %>%
+  #   mutate(log_Concentration_norm = log(Concentration_norm + 1))  # Adding 1 to avoid taking log of zero
+           #bin = cut(log_Concentration_norm, breaks = seq(min(log_Concentration_norm,na.rm = TRUE), max(log_Concentration_norm,na.rm = TRUE), length.out = num_bins + 1), labels = FALSE))
+  # Determine the number of bins
+  # num_bins <- 5
+  # # Define marker sizes for each bin (logarithmic scale)
+  # max_size <- 30  # Maximum marker size
+  # min_size <- 5   # Minimum marker size
+  # bin_sizes <- seq(min(filtered_data_gcms$log_Concentration_norm), max(filtered_data_gcms$log_Concentration_norm), length.out = num_bins + 1)  # Create logarithmic bins
+  # bin_sizes <- exp(bin_sizes)  # Convert back to original scale
+  # bin_sizes <- pmax(bin_sizes, 1)  # Ensure minimum size is 1
+  # bin_sizes <- (bin_sizes - min(bin_sizes)) / (max(bin_sizes) - min(bin_sizes))  # Normalize to [0, 1]
+  # bin_sizes <- bin_sizes * (max_size - min_size) + min_size  # Scale to desired range
+  # 
+  # # Assign marker sizes based on the bins
+  # filtered_data_gcms <- filtered_data_gcms %>%
+  #   mutate(radius = bin_sizes[bin])
+  
+  return(filtered_data_gcms)
+  
+}
+
+# function to import and process EA WQ data (chatGPT tidy):
+data_process_EA_WQ_gcmsTOFIX <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv', CompoundName = "Phenanthrene") {
+  
+  data_gcms <- read.csv(fp_gcms)
+  
+  # Filter data for the specific compound
+  filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
+  
+  # Filter out rows with NA values in the 'Concentration' column
+  filtered_data_gcms <- filtered_data_gcms[!is.na(filtered_data_gcms$Concentration), ]
+  
+  # Check if the filtered data is empty
+  if (nrow(filtered_data_gcms) == 0) {
+    warning("No valid data for the specified compound.")
+    return(NULL)  # Return NULL if no valid data exists
+  }
+  
+  # Calculate the minimum and maximum values, ensuring non-NA data
+  min_value <- min(filtered_data_gcms$Concentration, na.rm = TRUE)
+  max_value <- max(filtered_data_gcms$Concentration, na.rm = TRUE)
+  
+  # Handle the case where all concentrations are identical
+  if (min_value == max_value) {
+    warning("All concentration values are identical.")
+    filtered_data_gcms$Concentration_norm <- 1  # Set normalized values to 1 in this case
+  } else {
+    # Normalize 'Concentration' to range [0, 1]
+    filtered_data_gcms <- filtered_data_gcms %>%
+      mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))
+  }
   
   # Determine the number of bins
   num_bins <- 5
   
-  # Create logarithmic bins for normalized quantity values
+  # Create logarithmic bins for normalized concentration values
   filtered_data_gcms <- filtered_data_gcms %>%
-    mutate(log_Concentration_norm = log(Concentration_norm + 1),  # Adding 1 to avoid taking log of zero
-           bin = cut(log_Concentration_norm, breaks = seq(min(log_Concentration_norm,na.rm = TRUE), max(log_Concentration_norm,na.rm = TRUE), length.out = num_bins + 1), labels = FALSE))
+    # Ensure all values are finite (removing NA, NaN, Inf)
+    filter(is.finite(Concentration_norm)) %>%
+    # Check if data is non-empty and not all identical values before proceeding
+    mutate(
+      log_Concentration_norm = ifelse(n() > 0, log(Concentration_norm + 1), NA)
+    ) %>%
+    mutate(
+      bin = if (n() > 0 && length(unique(log_Concentration_norm)) > 1) {
+        # Proceed with binning if there are more than one unique values
+        cut(log_Concentration_norm, 
+            breaks = seq(min(log_Concentration_norm, na.rm = TRUE), 
+                         max(log_Concentration_norm, na.rm = TRUE), 
+                         length.out = num_bins + 1), 
+            labels = FALSE)
+      } else {
+        # If all values are NA or identical, assign NA to bins
+        NA
+      }
+    )
+  
+  # Check if there are valid values for binning before continuing with marker size assignment
+  if (all(is.na(filtered_data_gcms$bin))) {
+    warning("No valid data for binning.")
+    return(NULL)  # Return NULL if no valid binning is possible
+  }
   
   # Define marker sizes for each bin (logarithmic scale)
   max_size <- 30  # Maximum marker size
   min_size <- 5   # Minimum marker size
-  bin_sizes <- seq(min(filtered_data_gcms$log_Concentration_norm), max(filtered_data_gcms$log_Concentration_norm), length.out = num_bins + 1)  # Create logarithmic bins
+  
+  # Handle edge cases where log_Concentration_norm might be NA
+  if (all(is.na(filtered_data_gcms$log_Concentration_norm))) {
+    warning("No valid data for logarithmic transformation.")
+    return(NULL)  # Return NULL if no valid log-transformed data exists
+  }
+  
+  # Generate bin sizes
+  bin_sizes <- seq(min(filtered_data_gcms$log_Concentration_norm, na.rm = TRUE), 
+                   max(filtered_data_gcms$log_Concentration_norm, na.rm = TRUE), 
+                   length.out = num_bins + 1)  # Create logarithmic bins
   bin_sizes <- exp(bin_sizes)  # Convert back to original scale
   bin_sizes <- pmax(bin_sizes, 1)  # Ensure minimum size is 1
   bin_sizes <- (bin_sizes - min(bin_sizes)) / (max(bin_sizes) - min(bin_sizes))  # Normalize to [0, 1]
@@ -170,12 +301,11 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
     mutate(radius = bin_sizes[bin])
   
   return(filtered_data_gcms)
-  
 }
 
+
 data_process_pbms <- function(var_biota = 'buzzard', 
-                              var_sgar_map_sgl = 'Cd',
-                              var_metals_map_sgl = 'ΣSGARs') {
+                              var_map_sgl = 'Cd') {     #var_map_sgl never used so far!!!
   
   # Read in the data
   if(var_biota =='Otter'){
@@ -183,7 +313,8 @@ data_process_pbms <- function(var_biota = 'buzzard',
     otter_metals[,c('long','lat')] <-sf_project(from = st_crs(27700), to = st_crs(4326),  otter_metals[,c('X','Y')])
     otter_metals_long <- otter_metals %>% select(UWCRef,Year, long, lat, !!metals_choices) %>% tidyr::pivot_longer(!!metals_choices)
     otter_choices <- metals_choices
-    filtered_data = otter_metals %>% rename(year = Year)
+    filtered_data = otter_metals %>% rename(year = Year)%>% 
+      mutate(biota = 'Otter')
   } else if(var_biota =='Buzzard'){
     
     buzzards <- read_excel('datasets/PBMS/20240704_APEX_Buzzard_Data_forMockUp.xlsx',skip=1)
@@ -202,7 +333,8 @@ data_process_pbms <- function(var_biota = 'buzzard',
     
     
     buzzard_choices <- list(`metals` = metals_choices, `SGARs` = SGARs_choices)
-    filtered_data = buzzards %>% rename(year = `Collection year`)
+    filtered_data = buzzards %>% rename(year = `Collection year`)%>% 
+      mutate(biota = 'Buzzard')
     
   } else if(var_biota =='Sparrowhawk'){
     
@@ -216,15 +348,86 @@ data_process_pbms <- function(var_biota = 'buzzard',
     sparrowhawk_SGARs_long <- sparrowhawk_SGARs %>% rename(ΣSGARs = Sum_SGAR) %>% tidyr::pivot_longer(cols = Difenacoum:ΣSGARs)
     sparrowhawk_choices <- SGARs_choices
     
-    filtered_data = sparrowhawk_SGARs %>% rename(year = YEAR)
+    filtered_data = sparrowhawk_SGARs %>% rename(year = YEAR) %>% 
+      mutate(biota = 'Sparrowhawk') %>% rename( `ΣSGARs`= Sum_SGAR )
   } else {
   }
   
- 
-    
+  filtered_data <- filtered_data %>% mutate(value = get(var_map_sgl))
   
-  return(list(filtered_data=filtered_data))
+  
+  return(list(filtered_data=filtered_data, var_biota=var_biota))
 }
+
+
+data_process_pfas <- function(selected_matrix = "Wastewater",
+                              selected_substance = "PFOA",
+                              start_year = "2019",
+                              end_year = "2020",
+                              transform_method = "Natural Log") {
+    
+  fp_pfas <- 'datasets/Forever_Poll_individual_pfas_values.csv'
+  data_pfas <- read.csv(fp_pfas)
+  
+  fp_h4 <- 'datasets/H4 PFAS list.csv'
+  h4_df <- read.csv(fp_h4) #h4 is a reserved R class
+  
+  filtered_data_pfas <- data_pfas %>% filter(country == "United Kingdom")
+  
+  # Filter out rows with NA values in the 'value' column
+  filtered_data_pfas <- filtered_data_pfas[!is.na(filtered_data_pfas$value), ]
+  
+  # Filter out rows with NA values in the 'lat' or 'lon' columns
+  filtered_data_pfas <- filtered_data_pfas[!is.na(filtered_data_pfas$lat), ]
+  filtered_data_pfas <- filtered_data_pfas[!is.na(filtered_data_pfas$lon), ]
+  
+  # Filter rows in data that have CAS IDs in h4
+  filtered_data_pfas <- filtered_data_pfas %>% inner_join(h4_df, by = c("cas_id" = "CAS.number"))
+  
+    # Create an sf object using the filtered lat and lon coordinates
+  sf_data <- st_as_sf(filtered_data_pfas, coords = c("lon", "lat"), crs = 4326)
+  
+  # Extract latitude and longitude directly from sf_data
+  filtered_data_pfas$Latitude <- st_coordinates(sf_data)[, 2]
+  filtered_data_pfas$Longitude <- st_coordinates(sf_data)[, 1]
+  
+
+  
+  # Calculate the quintiles and create a new column
+  filtered_data_pfas <- filtered_data_pfas %>%   mutate(substance_value_bin = ntile(value, 3))
+
+  # transform data to deal with skews and tails - have different options
+  if (transform_method == "Natural Log") {
+    filtered_data_pfas$transform_value <- log(filtered_data_pfas$value + 1) # Adding 1 to avoid log(0)
+    labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))  # Transform the legend back to original scale
+
+  } else if (transform_method == "Base 10 Log") {
+    filtered_data_pfas$transform_value <- log10(filtered_data_pfas$value + 1)
+    labFormat_transform = labelFormat(transform = function(x) round(10^x - 1, 1))
+
+  } # add other transform methods here
+  
+  # colour palette on transformed data
+  # pal <- colorNumeric(palette = viridis(12), domain = filtered_data_pfas$transform_value)
+
+  
+  # get unique PFAS names
+  unique_pfas_names <- sort(unique(filtered_data_pfas$substance))
+  
+  # Filter the data based on the selected criteria
+  filtered_data_pfas <- filtered_data_pfas %>%
+    filter(matrix == selected_matrix,
+           substance == selected_substance,
+           year >= start_year,
+           year <= end_year)
+  
+  return(list(filtered_data_pfas = filtered_data_pfas,
+              unique_pfas_names = unique_pfas_names,
+              labFormat_transform = labFormat_transform))
+  
+}
+  
+
 
 get_NUTS_regions <- function(NUTS_lvl_code = 1) {
   library(sf)

@@ -1,8 +1,8 @@
 ## Chemical Pollution visual tool generic version
 
-
 library(shiny)
 library(bslib)
+library(bsicons)
 library(leaflet)
 library(DT)
 library(raster)
@@ -15,6 +15,9 @@ library(sf)
 library(plotly)
 library(rnrfa) # for osg_parse
 library(readr)
+library(stringr)
+library(shinycssloaders)
+library(RColorBrewer)
 
 source('data_fun.R')
 source('map_fun.R')
@@ -22,8 +25,8 @@ source('modules/data_modules.R')
 source('theme_elements.R')
 data(quakes)
 
-rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://brandroom.ceh.ac.uk/sites/default/files/images/theme/UKCEH-Logo_Long_Pos_RGB_720x170.png" width="auto" height="40"> </a>')
 
+rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://brandroom.ceh.ac.uk/sites/default/files/images/theme/UKCEH-Logo_Long_Pos_RGB_720x170.png" width="auto" height="40"> </a>')
 
 
 link_shiny <- tags$a(shiny::icon("github"), "Code", href = "https://github.com/NERC-CEH/sli_visualTool", target = "_blank")
@@ -46,7 +49,7 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                     #theme = bs_theme(version = 5),
                     theme = UKCEH_theme,  # << add this line
                     #Application title
-                    UKCEH_titlePanel("Chemcial Pollution and the Environment"),
+                    UKCEH_titlePanel("Chemical Pollution and the Environment"),
                     #h1('Chemcial Pollution and the Environment'),
                     # or use page_navbar
                     navset_underline(
@@ -57,7 +60,7 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                     sidebar = sidebar(width = 400,
                                                       accordion(
                                                         div(id="placeholder"),
-                                                        multiple = TRUE
+                                                        multiple = TRUE, open=TRUE
                                                       ),
                                                       actionButton("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
                                                       actionButton("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
@@ -69,11 +72,12 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                       
                                       nav_panel("Map",
                                                 
-                                                leafletOutput('myMap',height = 900),
+                                                leafletOutput('myMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9"),
                                                 accordion(
                                                   accordion_panel(
                                                     "Map controls",
-                                                    "Coming soon"
+                                                    "Coming soon"#,
+                                                    # input_switch("marker_use_colourmap", "Colour markers by value.", TRUE)
                                                   ),
                                                   open=FALSE
                                                 )
@@ -81,18 +85,18 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                       nav_panel("Plot",
                                                 accordion(
                                                   div(id="placeholder-plots"),
-                                                  multiple = TRUE
+                                                  multiple = TRUE, open=TRUE
                                                 )
                                       ),
                                       nav_panel("Table", 
-                                                verbatimTextOutput("out"),
-                                                verbatimTextOutput("out2"),
+                                                # verbatimTextOutput("out"),   # uncomment for debugging
+                                                # verbatimTextOutput("out2"),
                                                 accordion(
                                                   div(id="placeholder-table"),
-                                                  multiple = TRUE
+                                                  multiple = TRUE, open=TRUE
                                                 )
                                       )
-                                      
+                                    , full_screen = TRUE
                                     )
                                   )
                                 )),
@@ -104,9 +108,17 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                                                   'Chemical Pollution Indicator'
                                                       )
                                     ),
-                                    leafletOutput('regionMap',height = 900) 
+                                    # value_box(
+                                    #   title = "",
+                                    #   value = "62%",
+                                    #   showcase = bs_icon("pie-chart"),
+                                    #   p('of land has 1 or more unhealthy'),
+                                    #   p('pollution indicators.'),
+                                    #   theme = "info"
+                                    # ),
+                                    leafletOutput('regionMap',height = 650) 
                                   )
-                                )
+                                  , full_screen = TRUE)
                       ),
                       nav_panel(title = "Time series", 
                                 card(
@@ -118,15 +130,17 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                                         multiple = TRUE
                                                       ),
                                                       actionButton("insertBtn_TS", "Add dataset",width = '100%', class = "btn-primary"),p(),
-                                                      actionButton("removeBtn_TS", "Remove dataset", class = "btn-warning",width = '100%'),p(),
-                                                      actionButton("updateBtn_TS", "Update map", class = "btn-success",width = '100%')
+                                                      actionButton("removeBtn_TS", "Remove dataset", class = "btn-warning",width = '100%'),p() #,
+                                                      # actionButton("updateBtn_TS", "Update map", class = "btn-success",width = '100%')
                                     ),
                                     navset_card_underline(
                                       # title = "Visualizations",
                                       nav_spacer(),
                                       nav_panel("Table", 
+                                                p('The time series tab currently work similarly as the spatial trends tab. It will be used in the future to plot time series of regional or national data or metrics.'),
+                                                
                                                 verbatimTextOutput("out_ts"),
-                                                verbatimTextOutput("out2_ts"),
+                                                # verbatimTextOutput("out2_ts"),
                                                 accordion(
                                                   div(id="placeholder-table-ts"),
                                                   multiple = TRUE
@@ -147,18 +161,35 @@ ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                                     )
                                   )
                                 )),
-                      nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900)), p(),p(),p(),hr(),
+                      nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900), p(),p(),p(),hr()),
+                      nav_panel(title = "Data Catalogue", DTOutput('catalogueDT')), p(),p(),p(),hr(),
                       nav_spacer(),
                       nav_menu(
                         title = "Links",
                         nav_item(link_shiny),
                         nav_item(link_posit)
+                      ),
+                      nav_item(
+                        input_dark_mode(id = "dark_mode", mode = "light")
                       )
                     )
 )
 
 
 server <- function(input, output, session) {
+  
+  data_catalogue <- read_excel('www/Visual tool data catalogue.xlsx',skip=1) %>% 
+    mutate(`Dataset name` = ifelse(str_detect(`Link to dataset`,'https'),
+                                   paste0('<a href="',`Link to dataset` ,  '" target="_blank">',`Dataset name` ,'</a>'),
+                                   `Dataset name`)) %>% 
+    select(-`Link to dataset`) %>% 
+    rename_with(~str_c("Case study:", .), all_of(colnames(.)[9:13]))
+
+  
+  output$catalogueDT = renderDT({
+    datatable(data_catalogue, escape = FALSE , class = 'cell-border stripe', rownames = F,
+              caption = 'Table 1: List of datasets included in the visual tool.')
+    })
   
   ############## Observers handling Point Data tab ####################
   ui_handler <- reactiveVal(list()) #stores the reactive UI 
@@ -203,11 +234,11 @@ server <- function(input, output, session) {
         where = "beforeBegin",
         ## wrap element in a div with id for ease of removal
         ui = tags$div(
-          accordion_panel(
-            paste0('Plot for dataset ',new_id_ii ,':'),
+          
+            # paste0('Plot for dataset ',new_id_ii ,':'),
             plot_mod_ui(paste0(new_id,'_plots'),as.character(new_id_ii)), 
             id = paste0(new_id,'_plots')
-          )
+            
         )
       )
       
@@ -229,7 +260,7 @@ server <- function(input, output, session) {
       names(df_list)[length(df_list)] <- new_id
       df_handler(df_list)
       
-      print(df_handler())
+      #print(df_handler())
       
       DT_mod_server(paste0(new_id,'_table'), df_handler()[[new_id]])  # table module
       #DT_mod_server(paste0(new_id,'_table'), mtcars)
@@ -378,17 +409,30 @@ server <- function(input, output, session) {
   ####################### end ########################
   
   ### leaflet map for point data #####
-  map = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6) 
+  map = leaflet() %>% 
+    addTiles(group = "OpenStreetMap") %>% 
+    addProviderTiles(providers$Esri.WorldImagery,                  # try Esri. and see what other options are available.
+                     group = "ESRI World Imagery",
+                     options = providerTileOptions(noWrap = TRUE) # (noWrap = TRUE) avoids having multiple world maps
+    ) %>%
+    addProviderTiles(providers$GeoportailFrance.orthos,
+                     group = "GeoportailFrance.orthos",
+                     options = providerTileOptions(noWrap = TRUE) # (noWrap = TRUE) avoids having multiple world maps
+    ) %>%
+    addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery", "GeoportailFrance.orthos"), position = 'topleft') %>%
+    setView(-3.0, 55.5, zoom = 6) 
   output$myMap = renderLeaflet(map)
   
   observeEvent(input$updateBtn, {
-    m = leafletProxy("myMap") %>%
+    m = leafletProxy("myMap") %>% 
+      removeLayersControl() %>% 
       clearShapes() %>% 
       clearControls() %>% 
       clearMarkers() #%>% 
     #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
     
-    # unpack the reactive list 
+    # unpack the reactive list
+    # outstanding issues: seems to not shrink in legnth after removing datasets--use with care
     df_list <- lapply(df_handler(), function(handle) {
       handle()
     })
@@ -396,25 +440,100 @@ server <- function(input, output, session) {
       handle()
     })
     
+    #colour palettes
+    single_color_sequential_palettes <- c("Reds", "Blues", "Greens", "Purples", "Oranges", "Greys")
+    labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
+    
+    # withProgress(message = 'Making plot', value = 0, {
     if (length(inserted_ids) > 0) {  
       for (new_id_ii in 1:length(inserted_ids)){
+        
         new_id = paste("dat1_ctrl", new_id_ii , sep = "_")
-        m = m %>%
-          addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
+        legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]] )
+        
+        m = m #%>%
+          #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
+        
+        print(head(df_list[[new_id]]))
+        
+        # incProgress(1/length(inserted_ids), detail = paste("Adding map from dataset", new_id_ii))
+        
         
         if (handler_list[[new_id]] == 'EA water quality GCMS data') {
-          m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+          # m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+          
+          fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$log_Concentration)
+          
+          m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]], 
+                                       fillColor =  ~fillColor(log_Concentration),
+                                       legend_title= legend_title) %>% 
+            addLegend(data = df_list[[new_id]], 
+                      position = "bottomright", 
+                      pal = fillColor, 
+                      values = ~df_list[[new_id]]$log_Concentration, 
+                      title = paste0(legend_title ,"</br>","Concentration ug/l"), 
+                      opacity = 1,
+                      group = legend_title,
+                      labFormat = labFormat_transform)
+          
+          
         } else if (handler_list[[new_id]] == 'EA pollution inventory 2021') {
-          m = m %>% map_fun_EA_pollution(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+          #m = m %>% map_fun_EA_pollution(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+          
+          fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$log_quantity_released_tons)
+          
+          m = m %>% map_fun_EA_pollution(df_list[[new_id]],
+                                         fillColor =  ~fillColor(log_quantity_released_tons),
+                                         legend_title= legend_title) %>% 
+            addLegend(data = df_list[[new_id]], 
+                      position = "bottomright", 
+                      pal = fillColor, 
+                      values = df_list[[new_id]]$log_quantity_released_tons, 
+                      title = paste0(legend_title ,"</br>","tonnes"), 
+                      opacity = 1,
+                      group = legend_title,
+                      labFormat = labFormat_transform)
+          
+          
         } else if (handler_list[[new_id]] == 'Predatory Bird Monitoring Scheme') {
-          m = m %>% map_fun_pbms(df_list[[new_id]])
+          m = m %>% map_fun_pbms(df_list[[new_id]], 
+                                 colorPalette = single_color_sequential_palettes[new_id_ii], 
+                                var_biota = df_list[[new_id]]$biota[1],
+                                 legend_title= legend_title)
+          
+        } else if (handler_list[[new_id]] == 'PFAS') {
+          #m = m %>% map_fun_pfas(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
+          # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
+          
+          fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$transform_value)
+          
+          m = m %>% map_fun_pfas(df_list[[new_id]], 
+                                 fillColor = ~fillColor(transform_value),
+                                 legend_title= legend_title) %>% 
+            addLegend(data = df_list[[new_id]], 
+                      position = "bottomright", 
+                      pal = fillColor, 
+                      values = df_list[[new_id]]$transform_value, 
+                      title = paste0(legend_title ,"</br>","ng/l"), 
+                      opacity = 1,
+                      group = legend_title,
+                      labFormat = labFormat_transform)
+          
         }
       }
+       m %>% addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery", "GeoportailFrance.orthos"), 
+                               overlayGroups = paste0(1:length(inserted_ids), '. ',handler_list[1:length(inserted_ids)]),
+                              position = 'topleft') 
+      
+       print(paste0(1:length(handler_list), '. ',handler_list))
+      
     }
-  })
+    # })
+  }
+)
   
   
-  ### indicator map ###
+  ###### indicator map #######
   
   regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
   addPolygons(

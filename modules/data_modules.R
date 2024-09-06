@@ -2,6 +2,8 @@
 source('modules/slider_UI.R') 
 # source('data_fun.R')
 
+library(scales)
+
 
 #' Dataset selection for plot user interface
 #'
@@ -10,7 +12,7 @@ source('modules/slider_UI.R')
 #' @return a \code{shiny::\link[shiny]{tagList}} containing UI elements
 #' 
 
-dat_choices_pt <- c("EA water quality GCMS data", "EA pollution inventory 2021", "Predatory Bird Monitoring Scheme")
+dat_choices_pt <- c("EA water quality GCMS data", "EA pollution inventory 2021", "Predatory Bird Monitoring Scheme", "PFAS")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -46,8 +48,10 @@ datselect_mod_server_OLD <-  function(id) {
         ea_pollution_sliders(id)
       } else if (type == "EA water quality GCMS data") {
         ea_gcms_sliders(id)
-      } else if (type =="Predatory Bird Monitoring Scheme")
+      } else if (type =="Predatory Bird Monitoring Scheme") {
         pbms_sliders(id)
+      } else if (type == "PFAS")
+        pfas_sliders(id)
     })
     result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
     filtered_data <- result[[1]]
@@ -78,28 +82,48 @@ datselect_mod_server <-  function(id) {
         ea_pollution_sliders(id)
       } else if (type == "EA water quality GCMS data") {
         ea_gcms_sliders(id)
-      } else if (type =="Predatory Bird Monitoring Scheme")
+      } else if (type == "Predatory Bird Monitoring Scheme") {
         pbms_sliders(id)
+      } else if (type == "PFAS")
+        pfas_sliders(id)
+    })
+    
+    # # update pbms_sliders selectinput for otters and sparrowhawks
+    observeEvent(input$var_biota, {
+        if (input$var_biota == 'Otter'){
+          updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices))
+        } else if (input$var_biota == 'Sparrowhawk') {
+          updateSelectInput(session, "var_map_sgl", choices = list( `SGARs` = SGARs_choices))
+        }    
     })
     
     # alternative: 
     filtered_data <- reactive({
       type <- req(input$data_choice)
+      print(type)
       if (length(type) == 0){
         data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # Hack to return some valid data while it waits for user input
       } else {
           if(type=='EA pollution inventory 2021') {
             data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
           } else if (type =="Predatory Bird Monitoring Scheme") {
-            data_process_pbms(var_biota = input$var_biota, var_sgar_map_sgl=input$var_sgar_map_sgl, var_metals_map_sgl = input$var_metals_map_sgl)[[1]] %>% 
+            data_process_pbms(var_biota = input$var_biota, 
+                              var_map_sgl = input$var_map_sgl)[[1]] %>% 
               filter(year >= input$year_slider[1], year <= input$year_slider[2])
+          } else if (type == "PFAS") {
+            data_process_pfas(selected_matrix = input$matrix,
+                               selected_substance = input$substance,
+                               start_year = input$year_slider[1],
+                               end_year = input$year_slider[2],
+                               transform_method = input$transform)[[1]]
+              
           } else {
             data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
-              filter(year >= input$year_slider[1], year <= input$year_slider[2])
+               filter(year >= input$year_slider[1], year <= input$year_slider[2])
           }
       }
     })
-    print(filtered_data)
+    print(filtered_data())
     
       ## if we later want to do some more sophisticated logic
       ## we can add reactives to this list
@@ -172,7 +196,16 @@ plot_mod_server <-  function(id, tbl_data) {
             theme_bw() +
             # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
             #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
-            ggtitle("Scatter plot:")
+            ggtitle("Scatter plot:") #+
+            #scale_y_continuous( breaks=pretty_breaks())
+          
+          if ( tolower(input$plot_xvar) == 'year') {
+            p1 = p1 + scale_x_continuous(labels = label_number(big.mark = ''))
+          }
+            
+          if ( tolower(input$plot_yvar) == 'year') {
+            p1 = p1 + scale_y_continuous(labels = label_number(big.mark = ''))
+          }
           
           # if( any(class(data1[!!input$plot_colorvar]) %in% c("factor", "character", "logical") )){
           # if( is.numeric(data1[input$plot_colorvar]))  {
@@ -190,8 +223,11 @@ plot_mod_server <-  function(id, tbl_data) {
 plot_mod_ui <- function(id, dataset_i) {
   ns <- NS(id)
   tagList(
-  uiOutput(ns("plot_placeholder")),
-  plotlyOutput(ns("my_plotXY"))
+    accordion_panel(
+      paste0('Plot for dataset ',dataset_i ,':'),
+      uiOutput(ns("plot_placeholder")),
+      plotlyOutput(ns("my_plotXY"))
+  )
   )
 }
 # 
