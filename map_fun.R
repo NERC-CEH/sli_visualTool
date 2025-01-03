@@ -51,7 +51,8 @@ map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sec
     )
 }
 
-
+## TEST:data = data_process_EA_WQ_gcms()
+## leaflet() %>% addTiles() %>% map_fun_EA_WQ_gcms(data=data)
 map_fun_EA_WQ_gcms <- function(map, data, fillColor = "blue",
                                legend_title= 'EA water quality GCMS data'){
   map %>% 
@@ -86,6 +87,16 @@ map_fun_pbms <- function(map, data,
                          fillColor = "blue", 
                          colorPalette = 'Oranges',
                          legend_title= NULL){
+  
+    #temporary fix
+    identical_columns <- sapply(data, function(col) identical(data[['value']], col))# check which one is identical to the column `value`
+    identical_columns <- identical_columns %>% which() %>% names()
+    print(identical_columns)
+    
+    identical_columns <- identical_columns[which(identical_columns !='value')]
+    
+    var_map_sgl <- identical_columns[1]
+    print(var_map_sgl)
 
     if(var_biota =='Otter'){
       
@@ -99,7 +110,7 @@ map_fun_pbms <- function(map, data,
                            "<b>Sex: </b>", Sex, "<br/>",
                            "<b>AgeClass: </b>", AgeClass, "<br/>",
                            "<b>Year: </b>", year, "<br/>",
-                           # "<b>Vraiable: </b>", var_map_sgl , "<br/>",
+                           "<b>Variable: </b>", var_map_sgl , "<br/>",
                            "<b>Value: </b>", round(value,digits=2) , "<br/>",
                            sep = ""
                          ),
@@ -113,35 +124,49 @@ map_fun_pbms <- function(map, data,
         )
       
     } else if(var_biota =='Buzzard'){
-      # data <- data %>% mutate(value = !!var_map_sgl)
-      qpal <- colorBin(colorPalette, data$value, bins = 5, , na.color = 'grey')
       
-      map = map %>% 
-        addCircleMarkers(~long, ~lat, data=data, fillColor = ~qpal(value), 
-                         color = "black", weight = 1.0, group = legend_title,
-                         fillOpacity = 0.8, # Opacity of the fill color
-                         popup = ~paste(
-                           "<b>Sex: </b>", `Sex (Male/Female/Unknown)`, "<br/>",
-                           "<b>AgeClass: </b>", `Age (Adult/Juvenile/Unknown)`, "<br/>",
-                           "<b>Year: </b>", year, "<br/>",
-                           # "<b>Vraiable: </b>", var_map_sgl , "<br/>",
-                           "<b>Value: </b>", value , "<br/>",
-                           sep = ""))  
+      # check for no data
+      if (is.null(data) || nrow(data) == 0 || all(is.na(data$value))) {
+        # Add a dummy legend
+        dummy_palette <- colorNumeric(palette = "Greys", domain = c(0, 1)) # Dummy palette
+        map <- map %>%
+          addLegend("bottomright", pal = dummy_palette, values = c(0, 1),
+                    title = paste(legend_title, "</br>No data available for this selection"),
+                    opacity = 1)
+      } else {
+       # else there is data and continue
       
-          if (var_map_sgl %in% metals_choices){
-            map = map %>% 
-                  addLegend("bottomright", data=data, pal = qpal, values = ~value, group = legend_title,
-                              title = paste(legend_title, "</br>Metals conc. [µg/g dry weight]"),
-                              opacity = 1)
-          } else if (var_map_sgl %in% SGARs_choices){
-            map = map %>% 
-              addLegend("bottomright", data=data, pal = qpal, values = ~value, group = legend_title,
-                        title = paste(legend_title, "</br>SGARs conc. [ng/g wet weight]"),
-                        opacity = 1)
-          } else {
-            map = map
-          }
-          map
+        # data <- data %>% mutate(value = !!var_map_sgl)
+        qpal <- colorBin(colorPalette, data$value, bins = 5, , na.color = 'grey')
+        
+  
+        map = map %>% 
+          addCircleMarkers(~long, ~lat, data=data, fillColor = ~qpal(value), 
+                           color = "black", weight = 1.0, group = legend_title,
+                           fillOpacity = 0.8, # Opacity of the fill color
+                           popup = ~paste(
+                             "<b>Sex: </b>", `Sex (Male/Female/Unknown)`, "<br/>",
+                             "<b>AgeClass: </b>", `Age (Adult/Juvenile/Unknown)`, "<br/>",
+                             "<b>Year: </b>", year, "<br/>",
+                             "<b>Variable: </b>", var_map_sgl , "<br/>",
+                             "<b>Value: </b>", value , "<br/>",
+                             sep = ""))  
+        
+            if (var_map_sgl %in% metals_choices){
+              map = map %>%
+                    addLegend("bottomright", data=data, pal = qpal, values = ~value, group = legend_title,
+                                title = paste(legend_title, "</br>Metals conc. [µg/g dry weight]"),
+                                opacity = 1)
+            } else if (var_map_sgl %in% SGARs_choices){
+              map = map %>%
+                addLegend("bottomright", data=data, pal = qpal, values = ~value, group = legend_title,
+                          title = paste(legend_title, "</br>SGARs conc. [ng/g wet weight]"),
+                          opacity = 1)
+            } else {
+              map = map
+            }
+            map
+      }
           
     } else if(var_biota =='Sparrowhawk'){
       # data <- data %>% mutate(value = !!var_map_sgl)
@@ -155,7 +180,7 @@ map_fun_pbms <- function(map, data,
                          popup = ~paste(
                            "<b>AgeClass: </b>", AGE, "<br/>",
                            "<b>Year: </b>", year, "<br/>",
-                           # "<b>Vraiable: </b>", var_map_sgl , "<br/>",
+                           "<b>Variable: </b>", var_map_sgl , "<br/>",
                            "<b>Value: </b>", value , "<br/>",
                            sep = "")) %>%  
         addLegend("bottomright", data=data, pal = qpal2, values = ~value,
@@ -168,33 +193,43 @@ map_fun_pbms <- function(map, data,
 }
 
 
-map_fun_pfas <- function(map, data, fillColor = "blue", legend_title = "PFAS"){
+map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatmap  = FALSE){
   
-  #fillColor = ~colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = data$transform_value)(transform_value)
-  
-  map  %>%
-    # addTiles() %>%
-    # setView(lng = mean(filtered_data$Longitude), lat = mean(filtered_data$Latitude), zoom = 5) %>%
-    #addControl(html = paste("<h5>", selected_matrix, " ", selected_substance, " ", start_year, " - ", end_year, "</h5>", sep = ""), position = "topright") %>%
-    addCircleMarkers(
-      data = data,
-      lng = ~Longitude, lat = ~Latitude, radius = 8,
-      popup = ~paste(
-        "<b>Matrix: </b>", matrix, "<br/>",
-        "<b>Substance: </b>", substance, "<br/>",
-        "<b>Quantity Released: </b>", value, "<br/>",
-        "<b>Unit: </b>", "ng/l", "<br/>",
-        #"<b>Quantile Bin (1-3): </b>", substance_value_bin, "<br/>",
-        "<b>Date: </b>", date, "<br/>",
-        "<b>Year: </b>", year, "<br/>",
-        sep = ""
-      ),
-      color = "black",   # Outline color
-      fillColor = fillColor, # ~pal(transform_value), 
-      fillOpacity = 0.8, # Opacity of the fill color
-      weight = 0.2,
-      group = legend_title
-    ) 
+  if (showHeatmap) {
+    
+    map %>%
+      addHeatmap(
+        data = data,
+        lng = ~Longitude, lat = ~Latitude, intensity = ~transform_value,
+        blur = 15, radius = 25,
+        gradient = fillColor
+        )
+  } else {
+
+    map  %>%
+      # addTiles() %>%
+      # setView(lng = mean(filtered_data$Longitude), lat = mean(filtered_data$Latitude), zoom = 5) %>%
+      #addControl(html = paste("<h5>", selected_matrix, " ", selected_substance, " ", start_year, " - ", end_year, "</h5>", sep = ""), position = "topright") %>%
+      addCircleMarkers(
+        data = data,
+        lng = ~Longitude, lat = ~Latitude, radius = 8,
+        popup = ~paste(
+          "<b>Matrix: </b>", matrix, "<br/>",
+          "<b>Substance: </b>", substance, "<br/>",
+          "<b>Quantity Released: </b>", value, "<br/>",
+          "<b>Unit: </b>", "ng/l", "<br/>",
+          #"<b>Quantile Bin (1-3): </b>", substance_value_bin, "<br/>",
+          "<b>Date: </b>", date, "<br/>",
+          "<b>Year: </b>", year, "<br/>",
+          sep = ""
+        ),
+        color = "black",   # Outline color
+        fillColor = ~fillColor(transform_value), # ~pal(transform_value), 
+        fillOpacity = 0.8, # Opacity of the fill color
+        weight = 0.2,
+        group = legend_title
+      ) 
+  }
   # %>%
   #   addLegend("bottomright", pal = pal, values = ~transform_value,
   #             title = paste(selected_substance,  " ng/l"),
@@ -204,6 +239,53 @@ map_fun_pfas <- function(map, data, fillColor = "blue", legend_title = "PFAS"){
   
 }
 
+
+map_fun_rain <- function(map, data, colors) {
+  
+  #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
+  map %>% 
+    addRasterImage(data, 
+                   colors = colors, 
+                   opacity = 0.7) %>%
+    addLegend(pal = colors,
+              values = values(data),
+              title = "Rain (mm)",
+              na.label = NULL) 
+  # %>% 
+  #   addControl( HTML(paste("<b>Year: </b>", input$year_slider)), position = "topright")
+  
+}
+
+## TEST:data = data_process_apiens()[[1]]
+## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$Value)
+## leaflet() %>% addTiles() %>% map_fun_apiens(data = data, fillColor=fillColor)
+map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS"){
+  
+ 
+    map  %>%
+      addCircleMarkers(
+        data = data,
+        lng = ~Site_lon, lat = ~Site_lat, radius = 8,
+        popup = ~paste(
+          "<b>Site_habitat: </b>", Site_habitat, "<br/>",
+          "<b>Network: </b>", Network, "<br/>",
+          "<b>Site_habitat: </b>", Site_habitat, "<br/>",
+          "<b>Plot_ID_or_Horizon_name: </b>", Plot_ID_or_Horizon_name, "<br/>",
+          "<b>Year: </b>", Year, "<br/>",
+          "<b>Variable: </b>", Variable, "<br/>",
+          "<b>Unit: </b>", Unit, "<br/>",
+          sep = ""
+        ),
+        color = "black",   # Outline color
+        fillColor = fillColor, # ~pal(transform_value), 
+        fillOpacity = 0.8, # Opacity of the fill color
+        weight = 0.2,
+        group = legend_title
+      ) 
+  
+  
+  
+}
 
 
 switch_map <- function(map, data, input_choice){
