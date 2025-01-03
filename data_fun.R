@@ -462,3 +462,69 @@ data_process_EA_WQ_gcms_with_NUTS <- function(fp_gcms_withNUTS = './datasets/EA_
   return(NUTS_region_with_gcms_data)
 }
 
+data_process_haduk_rain <- function(year_slider = "2023") {
+  rain_rasters <- list.files("datasets/HADUK-Grid-rainfall-annual/rasters", pattern = "*.tif", full.names = TRUE)
+  
+  # selected_rain_raster <- reactive({
+  #   raster_file <- rain_rasters[grep(as.character(year_slider), rain_rasters)]
+  #   raster(raster_file)
+  # })
+  raster_file <- rain_rasters[grep(as.character(year_slider), rain_rasters)]
+  selected_rain_raster <- raster(raster_file)
+  
+  return(selected_rain_raster)
+}
+
+data_process_apiens <- function(var_choices = c("NH4-N","NO3-N"),
+                                necd_choices = "Terrestrial liquid / soil acidity",
+                              start_year = "2018",
+                              end_year = "2020") {
+  
+  fp_apiens <- 'datasets/APIENS_direction/apiens_directions_data.csv'
+  data_apiens <- read.csv(fp_apiens)
+  
+  filtered_data_apiens <- data_apiens %>% 
+      filter(!str_starts(Variable,'Specfic conductivity'))  # wrong unicode, needs fixing
+  
+# Filter out rows with NA values in the 'value' column
+  filtered_data_apiens <- filtered_data_apiens[!is.na(filtered_data_apiens$Value), ]
+
+# Filter out rows with NA values in the 'lat' or 'lon' columns
+  # filtered_data_apiens <- filtered_data_apiens[!is.na(filtered_data_apiens$lat), ]
+  # filtered_data_apiens <- filtered_data_apiens[!is.na(filtered_data_apiens$lon), ]
+
+
+  
+  
+  
+  # # Calculate the quintiles and create a new column
+  # filtered_data_apiens <- filtered_data_apiens %>%   mutate(substance_value_bin = ntile(Value, 3))
+  
+  # # transform data to deal with skews and tails - have different options
+  # if (transform_method == "Natural Log") {
+  #   filtered_data_apiens$transform_value <- log(filtered_data_apiens$Value + 1) # Adding 1 to avoid log(0)
+  #   labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))  # Transform the legend back to original scale
+  #   
+  # } else if (transform_method == "Base 10 Log") {
+  #   filtered_data_apiens$transform_value <- log10(filtered_data_apiens$value + 1)
+  #   labFormat_transform = labelFormat(transform = function(x) round(10^x - 1, 1))
+  #   
+  # } # add other transform methods here
+  
+  # colour palette on transformed data
+  # pal <- colorNumeric(palette = viridis(12), domain = filtered_data_pfas$transform_value)
+  
+  
+  
+  # Filter the data based on the selected criteria
+  filtered_data_apiens <- filtered_data_apiens %>%
+    filter(Year >= start_year,
+           Year <= end_year,
+           Variable %in% var_choices) 
+  
+  return(list(filtered_data_apiens = filtered_data_apiens,
+              unique_apiens_varnames = data_apiens %>% distinct(Variable) %>% pull(),
+                unique_apiens_NECD = data_apiens %>% distinct(NECD_category) %>% pull()
+              ))
+  
+}

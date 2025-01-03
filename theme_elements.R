@@ -26,17 +26,49 @@ UKCEH_theme <- bs_add_variables(UKCEH_theme,
 #titlePanel replacement
 UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
   
-  div(
-    a(href="JavaScript: location.reload(true);" ,img(src="https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png",
-        style="height: 50px;vertical-align:middle;")),
-    
-    h2(  
-      title,
-      style ='vertical-align:middle; display:inline;padding-left:40px;'
-    ),
-    tagList(tags$head(tags$title(paste0(windowTitle," | UK Centre for Ecology & Hydrology")),
-                      tags$link(rel="shortcut icon", href="https://brandroom.ceh.ac.uk/themes/custom/ceh/favicon.ico"))),
-    style = "padding: 30px;"
+  # 
+  # div(
+  #   div(
+  #     style = "display: flex; justify-content: space-between; align-items: center;",
+  #     
+  #     a(href="JavaScript: location.reload(true);" ,img(src="https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png",
+  #         style="height: 50px;vertical-align:middle;")),
+  #     
+  #     a(href="JavaScript: location.reload(true);" ,img(src="https://jncc.gov.uk/images/logo.png",
+  #                                                      style="height: 50px;vertical-align:middle;")),
+  #   ),
+  #   
+  #   div(
+  #   
+  #   h2(  
+  #       title,
+  #       style ='vertical-align:middle; display:inline;padding-left:40px;'
+  #     ),
+  #   ),
+  #   
+  #   tagList(tags$head(tags$title(paste0(windowTitle," | UK Centre for Ecology & Hydrology")),
+  #                     tags$link(rel="shortcut icon", href="https://brandroom.ceh.ac.uk/themes/custom/ceh/favicon.ico"))),
+  #   style = "padding: 30px;"
+  # )
+  
+  
+  ## option 2
+  titlePanel(
+    tags$div(
+      style = "display: flex; justify-content: space-between; align-items: center;",
+      
+      # Left Logo
+      tags$a(href="JavaScript: location.reload(true);",
+             tags$img(src = "https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png", height = "50px")
+      )#
+      ,
+      
+      # Title in the center
+      tags$h1(title, style = "flex-grow: 1; text-align: middle;padding-left:40px;"), # can use middle or left text-align, and add  padding-left:40px;
+      
+      # Right Logo
+      tags$img(src = "https://jncc.gov.uk/images/logo.png", height = "50px")
+    )
   )
 }
 

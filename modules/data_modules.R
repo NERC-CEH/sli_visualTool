@@ -12,7 +12,10 @@ library(scales)
 #' @return a \code{shiny::\link[shiny]{tagList}} containing UI elements
 #' 
 
-dat_choices_pt <- c("EA water quality GCMS data", "EA pollution inventory 2021", "Predatory Bird Monitoring Scheme", "PFAS")
+dat_choices_pt <- c("EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
+                    "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
+                    "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
+                    "UK cats and dogs density")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -46,12 +49,15 @@ datselect_mod_server_OLD <-  function(id) {
       
       if (type == "EA pollution inventory 2021") {
         ea_pollution_sliders(id)
-      } else if (type == "EA water quality GCMS data") {
+      } else if (type == "EA water quality GCMS/LCMS data") {
         ea_gcms_sliders(id)
       } else if (type =="Predatory Bird Monitoring Scheme") {
         pbms_sliders(id)
-      } else if (type == "PFAS")
+      } else if (type == "PFAS") {
         pfas_sliders(id)
+      } else if (type == "HadUK-Grid Annual Rainfall") {
+        rain_sliders(id)
+      }
     })
     result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
     filtered_data <- result[[1]]
@@ -80,13 +86,21 @@ datselect_mod_server <-  function(id) {
       print(type)
       if (type == "EA pollution inventory 2021") {
         ea_pollution_sliders(id)
-      } else if (type == "EA water quality GCMS data") {
+      } else if (type == "EA water quality GCMS/LCMS data") {
         ea_gcms_sliders(id)
       } else if (type == "Predatory Bird Monitoring Scheme") {
         pbms_sliders(id)
-      } else if (type == "PFAS")
+      } else if (type == "PFAS") {
         pfas_sliders(id)
+      } else if (type == "HadUK-Grid Annual Rainfall") {
+        rain_sliders(id)
+      } else if (type == "APIENS") {
+        apiens_sliders(id)
+      } else {
+        p('The selected dataset will be added soon.')
+      }
     })
+    
     
     # # update pbms_sliders selectinput for otters and sparrowhawks
     observeEvent(input$var_biota, {
@@ -117,6 +131,15 @@ datselect_mod_server <-  function(id) {
                                end_year = input$year_slider[2],
                                transform_method = input$transform)[[1]]
               
+          } else if (type == "HadUK-Grid Annual Rainfall") {
+            data_process_haduk_rain(year_slider = input$year_slider)
+            
+            
+          } else if (type == "APIENS") {
+            data_process_apiens(start_year = input$year_slider[1],
+                                end_year = input$year_slider[2],
+                                var_choices = input$variable_choices,
+                                necd_choices = input$necd_choices)[[1]]
           } else {
             data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
                filter(year >= input$year_slider[1], year <= input$year_slider[2])
@@ -168,6 +191,8 @@ plot_mod_server <-  function(id, tbl_data) {
   moduleServer(
     id,
     function(input, output, session) {
+      suppressWarnings({
+        
       
       ns <- session$ns
       output$plot_placeholder <- renderUI({
@@ -185,37 +210,43 @@ plot_mod_server <-  function(id, tbl_data) {
         )
       })
         output$my_plotXY <- renderPlotly({
+          validate(
+            need(nrow(tbl_data()) > 0, message = FALSE)
+          )
           
-          data1 = tbl_data()
-          
-          #DO this: https://stackoverflow.com/questions/63565683/hide-error-message-with-custom-message-or-reactive-button-in-shiny-app
+              data1 = tbl_data()
+    
 
-          ## plot the common features for all graphs
-          p1<-ggplot(data1, aes(x=.data[[input$plot_xvar]], .data[[input$plot_yvar]], color=.data[[input$plot_colorvar]])) + 
-            geom_point(size = 0.8) +
-            theme_bw() +
-            # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
-            #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
-            ggtitle("Scatter plot:") #+
-            #scale_y_continuous( breaks=pretty_breaks())
+              #DO this: https://stackoverflow.com/questions/63565683/hide-error-message-with-custom-message-or-reactive-button-in-shiny-app
+    
+              ## plot the common features for all graphs
+              p1<-ggplot(data1, aes(x=.data[[input$plot_xvar]], .data[[input$plot_yvar]], color=.data[[input$plot_colorvar]])) + 
+                geom_point(size = 0.8) +
+                theme_bw() +
+                # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
+                #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
+                ggtitle("Scatter plot:") #+
+                #scale_y_continuous( breaks=pretty_breaks())
+              
+              if ( tolower(input$plot_xvar) == 'year') {
+                p1 = p1 + scale_x_continuous(labels = label_number(big.mark = ''))
+              }
+                
+              if ( tolower(input$plot_yvar) == 'year') {
+                p1 = p1 + scale_y_continuous(labels = label_number(big.mark = ''))
+              }
+              
+              # if( any(class(data1[!!input$plot_colorvar]) %in% c("factor", "character", "logical") )){
+              # if( is.numeric(data1[input$plot_colorvar]))  {
+              #   print(is.numeric(data1[input$plot_colorvar]))
+              #   print(input$plot_colorvar)
+              #   p1 <- p1+scale_color_manual(values = CB_color_cycle)
+              # } else{
+              #   p1 <- p1
+              # }
+              p1 + theme(aspect.ratio=1) # + coord_fixed(ratio = 1)
+            })
           
-          if ( tolower(input$plot_xvar) == 'year') {
-            p1 = p1 + scale_x_continuous(labels = label_number(big.mark = ''))
-          }
-            
-          if ( tolower(input$plot_yvar) == 'year') {
-            p1 = p1 + scale_y_continuous(labels = label_number(big.mark = ''))
-          }
-          
-          # if( any(class(data1[!!input$plot_colorvar]) %in% c("factor", "character", "logical") )){
-          # if( is.numeric(data1[input$plot_colorvar]))  {
-          #   print(is.numeric(data1[input$plot_colorvar]))
-          #   print(input$plot_colorvar)
-          #   p1 <- p1+scale_color_manual(values = CB_color_cycle)
-          # } else{
-          #   p1 <- p1
-          # }
-          p1 + theme(aspect.ratio=1) # + coord_fixed(ratio = 1)
         })
   })
 }
