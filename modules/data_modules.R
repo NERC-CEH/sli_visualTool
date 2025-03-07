@@ -12,10 +12,11 @@ library(scales)
 #' @return a \code{shiny::\link[shiny]{tagList}} containing UI elements
 #' 
 
+# note: if changing any of the dat choices, make sure you change them elsewhere too (app.R map switch, and output$ui_placeholder below)
 dat_choices_pt <- c("EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
-                    "UK cats and dogs density")
+                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -27,11 +28,18 @@ datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
   
   
   accordion_panel( paste0('Dataset ',dataset_i ,':'),
-                   selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
+                   icon = bsicons::bs_icon('clipboard-data'),
+                   selectInput(ns("data_choice"), 
+                               label = tooltip(
+                                 trigger = list(
+                                   paste0("Choose dataset ",dataset_i, ":"),
+                                   bs_icon("info-circle")
+                                 ),
+                                 "Choose a dataset. Your options below will change accordingly."
+                               ),
                                choices = dat_choices),
                    uiOutput(ns("ui_placeholder")),
-                   uiOutput(ns("dynamic_select")),
-                   open=TRUE
+                   uiOutput(ns("dynamic_select"))
                    
   )
 }
@@ -96,11 +104,19 @@ datselect_mod_server <-  function(id) {
         rain_sliders(id)
       } else if (type == "APIENS") {
         apiens_sliders(id)
+      } else if (type == 'EU Soil metals') {
+        euso_sliders(id)
+      } else if (type == 'UK cats and dogs density') {
+        cats_dogs_sliders(id)
+      } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
+        IYR_sliders(id)
       } else {
         p('The selected dataset will be added soon.')
       }
     })
     
+    
+    #### add reactive electives to individual datasets in the data module.
     
     # # update pbms_sliders selectinput for otters and sparrowhawks
     observeEvent(input$var_biota, {
@@ -108,7 +124,26 @@ datselect_mod_server <-  function(id) {
           updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices))
         } else if (input$var_biota == 'Sparrowhawk') {
           updateSelectInput(session, "var_map_sgl", choices = list( `SGARs` = SGARs_choices))
+        } else if (input$var_biota == 'Buzzard') {
+          updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices))
         }    
+    })
+    
+    
+    # # update ea_gcms_sliders to display chemical info
+    
+    ref_gcms<- data_process_chemref() # put in the main app to only load once?
+
+    observeEvent(input$gcms_compound, {
+      req(input$gcms_compound %in% ref_gcms$Compound_Name)
+      output$chem_info <- renderTable(
+        
+        ref_gcms %>% filter(Compound_Name == input$gcms_compound) %>% 
+                dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`) %>% t()
+        ,
+        rownames = TRUE,
+        colnames = FALSE,
+      )
     })
     
     # alternative: 
@@ -140,6 +175,12 @@ datselect_mod_server <-  function(id) {
                                 end_year = input$year_slider[2],
                                 var_choices = input$variable_choices,
                                 necd_choices = input$necd_choices)[[1]]
+          } else if (type == "EU Soil metals") {
+            data_process_EUSO(euso_var_choices = input$euso_var_choices)  
+          } else if (type == "UK cats and dogs density") {
+            data_process_catsdogs(var_choice = input$cats_or_dogs)  
+          } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
+            data_process_IYR(IYR_choice = input$IYR_choice)  
           } else {
             data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
                filter(year >= input$year_slider[1], year <= input$year_slider[2])
@@ -191,8 +232,6 @@ plot_mod_server <-  function(id, tbl_data) {
   moduleServer(
     id,
     function(input, output, session) {
-      suppressWarnings({
-        
       
       ns <- session$ns
       output$plot_placeholder <- renderUI({
@@ -204,21 +243,23 @@ plot_mod_server <-  function(id, tbl_data) {
                       choices = tbl_data() %>% select_if(is.numeric) %>% colnames(),
                       selected = {tbl_data() %>% select_if(is.numeric) %>% colnames()}[2]),
           selectInput(ns("plot_colorvar"), 'Choose variable to plot (colour):', 
-                      choices = tbl_data() %>% colnames())
+                      choices = tbl_data() %>% colnames()), 
                       #choices = c('REGION','SEX'))
         )
         )
       })
         output$my_plotXY <- renderPlotly({
-          validate(
-            need(nrow(tbl_data()) > 0, message = FALSE)
-          )
-          
+          # validate(
+          #   need(nrow(tbl_data()) > 0, message = FALSE)
+          # )
+          #
+          # tryCatch({
+            
+            suppressWarnings({
               data1 = tbl_data()
-    
-
+              
               #DO this: https://stackoverflow.com/questions/63565683/hide-error-message-with-custom-message-or-reactive-button-in-shiny-app
-    
+              
               ## plot the common features for all graphs
               p1<-ggplot(data1, aes(x=.data[[input$plot_xvar]], .data[[input$plot_yvar]], color=.data[[input$plot_colorvar]])) + 
                 geom_point(size = 0.8) +
@@ -226,12 +267,12 @@ plot_mod_server <-  function(id, tbl_data) {
                 # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
                 #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
                 ggtitle("Scatter plot:") #+
-                #scale_y_continuous( breaks=pretty_breaks())
+              #scale_y_continuous( breaks=pretty_breaks())
               
               if ( tolower(input$plot_xvar) == 'year') {
                 p1 = p1 + scale_x_continuous(labels = label_number(big.mark = ''))
               }
-                
+              
               if ( tolower(input$plot_yvar) == 'year') {
                 p1 = p1 + scale_y_continuous(labels = label_number(big.mark = ''))
               }
@@ -245,9 +286,20 @@ plot_mod_server <-  function(id, tbl_data) {
               #   p1 <- p1
               # }
               p1 + theme(aspect.ratio=1) # + coord_fixed(ratio = 1)
-            })
+            })   
+            
+            
+          # }, error = function(e) {
+          #   print(e$message)
+          #   output$plot_placeholder <- renderUI({
+          #     div("Gridded data cannot be plotted.")
+          #   })
+          #   NULL
+          #   
+          # })
           
-        })
+      })
+          
   })
 }
 
@@ -257,7 +309,7 @@ plot_mod_ui <- function(id, dataset_i) {
     accordion_panel(
       paste0('Plot for dataset ',dataset_i ,':'),
       uiOutput(ns("plot_placeholder")),
-      plotlyOutput(ns("my_plotXY"))
+      plotlyOutput(ns("my_plotXY"))  %>% withSpinner(type=5,color = "#A9A9A9")
   )
   )
 }

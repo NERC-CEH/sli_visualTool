@@ -163,12 +163,27 @@ data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_invento
 }
 
 
-data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv',
+
+data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv',
                                     CompoundName = "Phenanthrene",
                                     start_year = "2019",
                                     end_year = "2020") {
   
+  eqs_list <- read.csv('datasets/EA_water_quality_GCMS_LCMS/EQS_list.txt', skip=1, sep = '\n', col.names = 'determinant')
+  
+  fp_ref_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS EA NLS Target Database 2023-07-06.csv'
+  
+  # TODO: join it with NORMAN PNEC (see Spurgeon 2022): https://www.norman-network.com/nds/ecotox/lowestPnecsIndex.php
+  
+  fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
+  fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
+  
+  data_lcms <- read.csv(fp_lcms)
+  
   data_gcms <- read.csv(fp_gcms)
+  
+  data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
+  
   #filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
   
   # Filter the data based on the selected criteria
@@ -216,7 +231,7 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
 }
 
 # function to import and process EA WQ data (chatGPT tidy):
-data_process_EA_WQ_gcmsTOFIX <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv', CompoundName = "Phenanthrene") {
+data_process_EA_WQ_gcmsTOFIX <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv', CompoundName = "Phenanthrene") {
   
   data_gcms <- read.csv(fp_gcms)
   
@@ -527,4 +542,71 @@ data_process_apiens <- function(var_choices = c("NH4-N","NO3-N"),
                 unique_apiens_NECD = data_apiens %>% distinct(NECD_category) %>% pull()
               ))
   
+}
+
+data_process_catsdogs <- function(var_choice = 'Estimated Cat Population') {
+  
+  my_sf <- read_sf("datasets/UK-postal-boundaries-Jan2015/Districts.shp") %>% 
+    rename(PostcodeDistrict = name)
+  
+  cats <- read_csv('datasets/cats_and_dogs/APHA0372-Cat_Density_Postcode_District.csv')
+  dogs <- read_csv('datasets/cats_and_dogs/APHA0375-Dog_Density_Postcode_District.csv')
+  
+  # Census 2021: https://www.nomisweb.co.uk/sources/census_2021_pc
+  usual_residents <- read_csv('datasets/cats_and_dogs/census2021_number-of-usual-residents-by-postcode-district_pcdd_p004.csv') %>% 
+    rename(PostcodeDistrict =`Postcode Districts`) %>% 
+    rename(UsualResidents = Count)
+  
+  my_sf <- right_join(my_sf, merge(cats,dogs), by = join_by(PostcodeDistrict)) %>% 
+    left_join(usual_residents, by = join_by(PostcodeDistrict))
+  
+  simplified <- rmapshaper::ms_simplify(my_sf)
+  object.size(simplified)
+  
+  
+  var_choice = gsub(" ", "", var_choice, fixed = TRUE)
+  
+  
+  
+  return(filtered_data_catsdogs = my_sf %>% mutate(Value = !!var_choice) )
+  
+  
+}
+
+data_process_EUSO <- function(euso_var_choices = 'Cu') {
+  print('data_process_EUSO')
+  folder_EUSO = 'datasets/EU_soil_degradation/'
+  my_path <- paste0(folder_EUSO,'Cu/','copper_map_fill.tif')
+  return(my_path)
+}
+
+
+data_process_IYR <- function(IYR_choice = 'honeybees') {
+  
+  folder_IYR = 'datasets/Agzero_input_yield_ratio/dfe2a4a5-2b3a-4731-ba7f-aea7e926f1dd/data/'
+  my_raster <- raster(paste0(folder_IYR,'input_to_yield_ratio_', IYR_choice,'.tiff'))
+  return(my_raster)
+}
+
+data_process_chemref <- function(){
+  
+  # This function process important reference info on chemicals, usually for GCMS and LCMS
+  
+  eqs_list <- read.csv('datasets/EA_water_quality_GCMS_LCMS/EQS_list.txt', skip=1, sep = '\n', col.names = 'determinant')
+  
+  fp_ref_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS EA NLS Target Database 2023-07-06.csv'
+  fp_ref_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS EA NLS Target Database 2023-07-06.csv'
+  
+  # TODO: join it with NORMAN PNEC (see Spurgeon 2022): https://www.norman-network.com/nds/ecotox/lowestPnecsIndex.php
+  
+  norman_pnec <-read_csv('datasets/NORMAN/ecotox_2025-01-16-105859.csv') %>% 
+    dplyr::select(Substance, `CAS No.`,`Lowest PNEC Freshwater [µg//l]`) %>% 
+    mutate(`Lowest PNEC Freshwater [µg//l]` = as.numeric(`Lowest PNEC Freshwater [µg//l]`)) %>% 
+    rename(Compound_Name_NORMAN = Substance) %>% 
+    mutate(`CAS No.` = as.integer(gsub("[^0-9]", "", `CAS No.`)))
+  
+  ref_gcms <- rbind(read_csv(fp_ref_lcms),read_csv(fp_ref_gcms)) %>%   # combining GCMS and LCMS
+    left_join(norman_pnec,by = join_by(CAS_Number == `CAS No.`))
+  
+  return(ref_gcms)
 }
