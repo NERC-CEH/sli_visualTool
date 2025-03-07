@@ -6,25 +6,53 @@ unique_pfas_names <- data_process_pfas()[['unique_pfas_names']]
 unique_apiens_varnames <- data_process_apiens()[['unique_apiens_varnames']][-1] # drop first one
 unique_apiens_NECD <- data_process_apiens()[['unique_apiens_NECD']]
 
+ea_gcms_choices <-
+  list(`Pharmaceuticals` = list( "Diphenyl ether","Ibuprofen", "Ketamine","Mirtazapine", "Phenanthrene"), #"Benzothiazole",
+     `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole (Terbuconazole)", "Thiabendazole"),
+     `Herbicides` = list("Atrazine","Diuron","Metolachlor","Simazine"),
+     `Insecticides` = list("Diflufenican", "Fipronil", "Imidacloprid"),
+     `Others` = list("Caffeine","Cocaine", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol"))
 
-ea_pollution_sliders <- function(id) {               
+ea_gcms_choices %>% unlist() %>% unname()
+
+ea_pollution_sliders <- function(id) {   
+  
   tagList(
+    HTML('<p align="center" style="font-weight: bold;color:orange">Note: This data is not intended for comparing the pollution contributions of different sectors.</p>'),
+    
     selectInput(NS(id,"IndustrySector"), "Choose Industry Sector:",
                 unique_industry_sector
     )
   )
 }
 
+
+# data_gcms <- read.csv('datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv')
+# data_gcms %>% distinct(Compound_Name)
 ea_gcms_sliders <- function(id) {               
   tagList(
-    selectInput((NS(id,"gcms_compound")), "Choose compound:",
-                c("Phenanthrene", "Benzothiazole", "Cocaine", "Fipronil","Ibuprofen", "Imidacloprid", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-    ),
+    HTML('<p align="center" style="font-weight: bold;color:orange">Note: please read key info regarding the semi-quantitative screen data <a href="https://environment.data.gov.uk/dataset/e85a7a52-7a75-4856-a0b3-8c6e4e303858" target="_blank">here</a></p>'),
+  
+    selectInput((NS(id,"gcms_compound")), 
+                label = tooltip(
+                  trigger = list(
+                    "Choose compound:",
+                    bs_icon("info-circle")
+                  ),
+                  "We have only listed a small subset of the 1000+ chemicals available here."
+                ),
+                # change to groups: e.g. Vet med.
+                choices = ea_gcms_choices,
+                selected = "Phenanthrene"
+                ),
+    tableOutput(NS(id,"chem_info")),
+    # code("code displays your text similar to computer code"),
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
                 min = min(2013), max = max(2021),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
     )
+                
   )
 }
 
@@ -108,6 +136,49 @@ apiens_sliders <- function(id) {
                 choices =unique_apiens_NECD,
                 selected = unique_apiens_NECD,
                 multiple = TRUE
+    ),
+    p()
+  )
+}
+
+
+euso_sliders <- function(id) {
+  tagList(
+    selectInput(NS(id,"euso_var_choices"), "Choose variable:",
+                choices = c('Cu','Cd','Zn') 
+    ),
+    p()
+  )
+}
+
+cats_dogs_sliders <- function(id) {
+  tagList(
+    p('Overlaying this dataset on the map may take a few seconds.'),
+    selectInput(NS(id,"cats_or_dogs"), "Choose density:",
+                choices = c('Estimated Cat Population ','Estimated Dog Population','Usual Residents') 
+    ),
+    p()
+  )
+}
+
+
+IYR_sliders <- function(id) {
+  tagList(
+    selectInput(NS(id,"IYR_choice"), "Choose input to yield ratio for wheat:",
+                choices = c("Earthworms" = "earthworms",
+                            "Honeybees" = "honeybees",
+                            "N fertilisers" = "nitrogen_fertilisers",
+                            "P fertilisers" = "phosphorus_fertilisers")
+    ),
+    p()
+  )
+}
+
+
+Biotoxins_sliders <- function(id) {
+  tagList(
+    selectInput(NS(id,"biotoxin_choice"), "Choose biotoxin variable:",
+                choices = c("Amnesic Shellfish Poison (ASP, mg/kg) " = "ASP(mgPerkg)")
     ),
     p()
   )

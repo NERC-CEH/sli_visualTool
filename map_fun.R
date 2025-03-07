@@ -62,11 +62,13 @@ map_fun_EA_WQ_gcms <- function(map, data, fillColor = "blue",
       lng = ~Longitude, lat = ~Latitude, radius = 8,# ~radius,
       #clusterOptions = markerClusterOptions(maxClusterRadius=1),
       popup = ~paste(
+        "<b>Sample Site ID: </b>", Sample_Site_ID, "<br/>",
         "<b>Compound Name: </b>", Compound_Name, "<br/>",
         "<b>Concentration: </b>", Concentration, "<br/>",
         "<b>Unit: </b>", unit, "<br/>",
         "<b>Sample description: </b>", SMC_DESC, "<br/>",
         "<b>Date: </b>", Sample_datetime, "<br/>",
+        "<b>Method: </b>", method, "<br/>",
         sep = ""
       ),
       color = "black",   # Outline color
@@ -193,7 +195,11 @@ map_fun_pbms <- function(map, data,
 }
 
 
-map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatmap  = FALSE){
+## TEST:data = data_process_pfas(var_biota = 'Otter')
+## fillColor = colorNumeric(palette = brewer.pal(9, "Reds"), domain = data[[1]]$transform_value)
+## leaflet() %>% addTiles() %>% map_fun_pfas(data=data[[1]],fillColor = fillColor)
+
+map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatmap = FALSE){
   
   if (showHeatmap) {
     
@@ -202,7 +208,9 @@ map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatma
         data = data,
         lng = ~Longitude, lat = ~Latitude, intensity = ~transform_value,
         blur = 15, radius = 25,
-        gradient = fillColor
+        minOpacity = 0.5,
+        gradient = fillColor, #comment out to use default
+       group = legend_title
         )
   } else {
 
@@ -240,17 +248,14 @@ map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatma
 }
 
 
-map_fun_rain <- function(map, data, colors) {
+map_fun_rain <- function(map, data, colors, legend_title = "HadUK-Grid Annual Rainfall") {
   
   #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
   map %>% 
     addRasterImage(data, 
                    colors = colors, 
-                   opacity = 0.7) %>%
-    addLegend(pal = colors,
-              values = values(data),
-              title = "Rain (mm)",
-              na.label = NULL) 
+                   opacity = 0.7,
+                   group = legend_title) 
   # %>% 
   #   addControl( HTML(paste("<b>Year: </b>", input$year_slider)), position = "topright")
   
@@ -287,9 +292,293 @@ map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS"
   
 }
 
-
-switch_map <- function(map, data, input_choice){
+map_fun_catsdogs  <- function(map, map_data, palette_name = 'viridis', legend_title = "Density by postcode") {
   
-  return(map)
+  pal <- colorNumeric(palette_name, NULL)
+  
+  head(map_data)
+  
+  map %>% 
+    addPolygons(data = map_data,
+                stroke = FALSE, smoothFactor = 0.5, fillOpacity = 0.5, weight = 1, opacity = 1.0,
+                fillColor =  ~pal(Value),
+                   group = legend_title) 
+  
+}
+
+map_fun_EUSO <- function(map, data, colors, legend_title = "Soil health") {
+  print('map_process_EUSO')
+  
+  #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
+  map %>% 
+    # addRasterImage(data, # can't handle large raster
+    #                colors = colors, 
+    #                opacity = 0.7,
+    #                group = legend_title) 
+    
+    leafem::addGeotiff(data, 
+                     colorOptions =  colorOptions(
+                       palette = hcl.colors(256, palette = "inferno")
+                       , na.color = "transparent"
+                     ),
+                      opacity = 0.7,
+                      group = legend_title) %>% 
+    setView(-3.0, 55.5, zoom = 6) 
+  
+}
+
+map_fun_IYR <- function(map, data, colors, legend_title = "Input to Yield Ratio") {
+  
+  #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
+  map %>% 
+    addRasterImage(data, 
+                   colors = colors, 
+                   opacity = 0.7,
+                   group = legend_title) 
+  
+}
+
+switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE){
+  
+  labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1)) 
+  print(paste0('switch_map', input_choice))
+  
+  if (input_choice == 'EA water quality GCMS/LCMS data') {
+    
+    # Check if the dataset is empty or has no valid data
+    if (nrow(map_data) == 0 || all(is.na(map_data$log_Concentration))) {
+      dummy_color <- colorNumeric(palette = "Greys", domain = c(0, 1))
+      # Add a message in the legend indicating no data
+      m = m %>% addLegend(
+        position = "bottomright",
+        pal = dummy_color,
+        values = c(0, 1),
+        title = paste0(legend_title, "</br>", "No data available for this selection"),
+        opacity = 1
+      )
+    } else {
+      
+      fillColor = colorNumeric(palette = brewer.pal(9,palette_name), domain = map_data$log_Concentration)
+      
+      m = m %>% map_fun_EA_WQ_gcms(map_data,
+                                   fillColor =  ~fillColor(log_Concentration),
+                                   legend_title= legend_title) %>%
+        addLegend(data = map_data,
+                  position = "bottomright",
+                  pal = fillColor,
+                  values = ~map_data$log_Concentration,
+                  title = paste0(legend_title ,"</br>","Concentration ug/l"),
+                  opacity = 1,
+                  group = legend_title,
+                  labFormat = labFormat_transform)
+    }
+    
+  } else if (input_choice == 'EA pollution inventory 2021') {
+    #m = m %>% map_fun_EA_pollution(map_data,fillColor = color_data$RGB[new_id_ii])
+    
+    fillColor = colorNumeric(palette = brewer.pal(9,palette_name), domain = map_data$log_quantity_released_tons)
+    
+    m = m %>% map_fun_EA_pollution(map_data,
+                                   fillColor =  ~fillColor(log_quantity_released_tons),
+                                   legend_title= legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = fillColor,
+                values = map_data$log_quantity_released_tons,
+                title = paste0(legend_title ,"</br>","tonnes"),
+                opacity = 1,
+                group = legend_title,
+                labFormat = labFormat_transform)
+    
+    
+  } else if (input_choice == 'Predatory Bird Monitoring Scheme') {
+    
+    # added a trycatch for when there is no data for the selection
+    m <- tryCatch({m %>% map_fun_pbms(map_data,
+                                      colorPalette =palette_name,
+                                      var_biota = map_data$biota[1],
+                                      legend_title= legend_title)
+    }, error = function(e){
+      dummy_palette <- colorNumeric(palette = "Greys", domain = c(0, 0)) # Dummy palette
+      # add notification
+      showNotification("No data available for this selection.", type = "error", duration = 5)
+      
+      # Add dummy legend with message
+      m %>% addLegend("bottomright", pal = dummy_palette, values = c(0, 0),
+                      title = paste(legend_title, "</br>No data available for this selection"),
+                      opacity = 1)
+    })
+    
+  } else if (input_choice == 'PFAS') {
+    
+    # Check if the dataset is empty or has no valid data
+    if (nrow(map_data) == 0 || all(is.na(map_data$transform_value))) {
+      
+      dummy_palette <- colorNumeric(palette = "Greys", domain = c(0, 0)) # Dummy palette
+      
+      showNotification("No data available for this selection.", type = "error", duration = 5)
+      
+      # Add a message in the legend indicating no data
+      m = m %>% addLegend(
+        position = "bottomright",
+        pal = dummy_palette,
+        values = c(0, 0),
+        title = paste0(legend_title, "</br>", "No data available for this selection"),
+        opacity = 1
+      )
+    } else {
+      #m = m %>% map_fun_pfas(map_data,fillColor = color_data$RGB[new_id_ii])
+      # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
+      
+      selected_palette <-palette_name
+      
+      fillColor = colorNumeric(palette = brewer.pal(9, selected_palette), domain = map_data$transform_value)
+      
+      gradient_colors <- colorNumeric(
+        palette = brewer.pal(9, selected_palette),
+        domain = map_data$transform_value
+      )(seq(min(map_data$transform_value, na.rm = TRUE),
+            max(map_data$transform_value, na.rm = TRUE),
+            length.out = 256))
+      
+      m = m %>% map_fun_pfas(map_data,
+                             fillColor = if (showHeatmap) gradient_colors else fillColor,  # Use gradient_colors in heatmap mode
+                             legend_title= legend_title,
+                             showHeatmap  = showHeatmap
+      ) %>%
+        addLegend(data = map_data,
+                  position = "bottomright",
+                  pal = fillColor,
+                  values = map_data$transform_value,
+                  title = paste0(legend_title ,"</br>","ng/l"),
+                  opacity = 1,
+                  group = legend_title,
+                  labFormat = labFormat_transform)
+      
+    }
+  } else if (input_choice == "HadUK-Grid Annual Rainfall") {
+    
+    rain_values <- values(map_data)
+    rain_values <- rain_values[!is.na(rain_values)]
+    
+    fillColor <- colorNumeric(
+      palette = brewer.pal(9,palette_name),
+      domain=range(rain_values),
+      na.color = "transparent"
+    )
+    
+    m = m %>% map_fun_rain(map_data,
+                           colors =  fillColor,
+                           legend_title = legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = fillColor,
+                values = values(map_data),
+                title = paste0(legend_title ,"</br>","mm"),
+                group = legend_title,
+                na.label = NULL) 
+    
+    
+    
+  } else if (input_choice == 'APIENS') {
+    #m = m %>% map_fun_EA_pollution(map_data,fillColor = color_data$RGB[new_id_ii])
+    
+    fillColor = colorNumeric(palette = brewer.pal(9,palette_name), domain = map_data$Value)
+    
+    m = m %>% map_fun_apiens(map_data,
+                             fillColor =  ~fillColor(Value),
+                             legend_title= legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = fillColor,
+                values = ~map_data$Value,
+                title = paste0(legend_title ,"</br>",unique(map_data$Unit)),
+                opacity = 1,
+                group = legend_title)
+    
+    
+  } else if (input_choice == 'UK cats and dogs density') {
+    
+    m = m %>% map_fun_catsdogs(map_data,
+                               palette_name =  palette_name,
+                             legend_title= legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = colorNumeric(palette_name, NULL),
+                values = ~Value,
+                title = paste0(legend_title),
+                opacity = 1,
+                group = legend_title)
+    
+    
+  }  else if (input_choice == "HadUK-Grid Annual Rainfall") {
+    
+    rain_values <- values(map_data)
+    rain_values <- rain_values[!is.na(rain_values)]
+    
+    fillColor <- colorNumeric(
+      palette = brewer.pal(9,palette_name),
+      domain=range(rain_values),
+      na.color = "transparent"
+    )
+    
+    m = m %>% map_fun_rain(map_data,
+                           colors =  fillColor,
+                           legend_title = legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = fillColor,
+                values = values(map_data),
+                title = paste0(legend_title ,"</br>","mm"),
+                group = legend_title,
+                na.label = NULL) 
+    
+  } else if (input_choice == "EU Soil metals") {
+    
+    #EUSO_values <- values(map_data)
+    # EUSO_values <- EUSO_values[!is.na(EUSO_values)]
+    
+    # fillColor <- colorNumeric(
+    #   palette = brewer.pal(9,palette_name),
+    #   domain=range(EUSO_values),
+    #   na.color = "transparent"
+    # )
+    
+    m = m %>% map_fun_EUSO(map_data,
+                          colors =  fillColor,
+                          legend_title = legend_title) #%>%
+      # addLegend(data = map_data,
+      #           position = "bottomright",
+      #           pal = fillColor,
+      #           values = values(map_data),
+      #           title = paste0(legend_title ,"</br>","[mg Kg-1]"),
+      #           group = legend_title,
+      #           na.label = NULL) 
+    
+  } else if (input_choice == "AgZero+ Input to Yield Ratio (IYR)") {
+    
+    IYR_values <- values(map_data)
+    IYR_values <- IYR_values[!is.na(IYR_values)]
+    
+    fillColor <- colorNumeric(
+      palette = brewer.pal(9,palette_name),
+      domain=range(IYR_values),
+      na.color = "transparent"
+    )
+    
+    m = m %>% map_fun_IYR(map_data,
+                           colors =  fillColor,
+                           legend_title = legend_title) %>%
+      addLegend(data = map_data,
+                position = "bottomright",
+                pal = fillColor,
+                values = values(map_data),
+                title = paste0(legend_title ,"</br>","[unitless]"),
+                group = legend_title,
+                na.label = NULL) 
+    
+  } 
+
+  return(m)
 
 }
