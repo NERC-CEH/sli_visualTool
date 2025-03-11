@@ -545,7 +545,6 @@ data_process_apiens <- function(var_choices = c("NH4-N","NO3-N"),
 }
 
 data_process_catsdogs <- function(var_choice = 'Estimated Cat Population') {
-  
   my_sf <- read_sf("datasets/UK-postal-boundaries-Jan2015/Districts.shp") %>% 
     rename(PostcodeDistrict = name)
   
@@ -568,7 +567,7 @@ data_process_catsdogs <- function(var_choice = 'Estimated Cat Population') {
   
   
   
-  return(filtered_data_catsdogs = my_sf %>% mutate(Value = !!var_choice) )
+  return(filtered_data_catsdogs = my_sf %>% mutate(Value = get(var_choice)) ) # if rename use !!var_choice
   
   
 }

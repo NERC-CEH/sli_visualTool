@@ -242,7 +242,7 @@ ui <- page_fillable(
     nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900), p(),p(),p(),hr()),
     nav_panel(title = "Data Catalogue", DTOutput('catalogueDT'),p(),p(),p(),hr()), 
     #nav_panel(title = "Chemical History Timeline", p('Coming soon.')),
-    nav_panel(title = "Accessibility Statement", tags$iframe(src='accessibility_statement.html', width=1000,height=1800), p(),p(),p(),hr()),
+    nav_panel(title = "Accessibility Statement", tags$iframe(src='accessibility_statement.html', width='100%', height=1500), p(),p(),p(),hr()),
     nav_panel(title = "About", 
               h2('About this visual tool'),
               p('This visual tool allows users to overlay several datasets to visualize their links in order to build an integrated understanding of chemical pollution. It also provides a demonstration to display a regional overall state of the environment indicator.'),
@@ -601,7 +601,11 @@ server <- function(input, output, session) {
       clearControls() %>% 
       clearMarkers() %>%
       clearHeatmap() %>%
-      clearImages()
+      clearImages() #%>% 
+      
+      # leafem::addGeotiff(file = 'datasets/empty_raster.tif',
+      #                    opacity = 0.0) # empty raseter to clear addGeotiff, doesn't work
+    
     #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
     
     # unpack the reactive list

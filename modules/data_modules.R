@@ -199,10 +199,28 @@ DT_mod_server <-  function(id, tbl_data) {
   moduleServer(
     id,
     function(input, output, session) {
-      #  ns <- session$ns
-      # Render the reactive df `tbl_data` as a table
-      output$outputTable  <- renderDT({
-        datatable(tbl_data(), options = list(scrollX = TRUE))
+      ns <- session$ns # this was commented out
+      
+      
+      
+        # Render the reactive df `tbl_data` as a table
+        output$outputTable  <- renderDT({
+          
+          tryCatch({
+            datatable(tbl_data(), options = list(scrollX = TRUE))
+          
+          }, error = function(e) {
+            
+            # print(e$message)
+            output$error_message <- renderUI({
+              div("Gridded data cannot be shown as a table")
+            })
+            NULL
+          
+        })
+        
+
+        
       })
     })
 }
@@ -212,15 +230,12 @@ DT_mod_ui <- function(id, dataset_i) {
   ns <- NS(id)
   accordion_panel( paste0('Table for dataset ',dataset_i ,':'),
                    h3("Selected data"),
-                   
               
-                   
-               DTOutput(ns("outputTable"))
-  
+                  uiOutput(ns("error_message")),  # Placeholder for error messages    
+                  DTOutput(ns("outputTable"))
                
                )
-  
-  
+
 }
 
 CB_color_cycle = rep(c("darkorange","purple","cyan4",'#377eb8', '#4daf4a',
@@ -253,7 +268,7 @@ plot_mod_server <-  function(id, tbl_data) {
           #   need(nrow(tbl_data()) > 0, message = FALSE)
           # )
           #
-          # tryCatch({
+          tryCatch({
             
             suppressWarnings({
               data1 = tbl_data()
@@ -262,7 +277,7 @@ plot_mod_server <-  function(id, tbl_data) {
               
               ## plot the common features for all graphs
               p1<-ggplot(data1, aes(x=.data[[input$plot_xvar]], .data[[input$plot_yvar]], color=.data[[input$plot_colorvar]])) + 
-                geom_point(size = 0.8) +
+                geom_point(size = 3) +
                 theme_bw() +
                 # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
                 #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
@@ -289,14 +304,18 @@ plot_mod_server <-  function(id, tbl_data) {
             })   
             
             
-          # }, error = function(e) {
-          #   print(e$message)
-          #   output$plot_placeholder <- renderUI({
-          #     div("Gridded data cannot be plotted.")
-          #   })
-          #   NULL
-          #   
-          # })
+          }, error = function(e) {
+            if (grepl("argument is of length zero", e$message)) {
+              return(NULL)  # Ignore this specific error and continue
+            }
+            
+            print(e$message)
+            output$plot_placeholder <- renderUI({
+              div("Gridded data cannot be plotted.")
+            })
+            NULL
+
+          })
           
       })
           
