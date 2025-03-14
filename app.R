@@ -23,6 +23,7 @@ library(shinycssloaders)
 library(RColorBrewer)
 library(tidyr)
 library(esquisse) # for  palettePicker
+library(leaflegend)
 
 source('data_fun.R')
 source('map_fun.R')
@@ -379,6 +380,8 @@ server <- function(input, output, session) {
       ui_handler(handler_list)  # important: update the reactive list
       inserted_ids <<- c(inserted_ids, new_id)
       print(handler_list)
+
+      
       
       ## Append data
       # reactive_df[[paste0('data_', new_id_ii)]] <- new_handler[['filtered_data']]
@@ -425,7 +428,6 @@ server <- function(input, output, session) {
     }
     
   })
-  
   
   output$out <- renderPrint({
     lapply(ui_handler(), function(handle) {
@@ -626,6 +628,7 @@ server <- function(input, output, session) {
         for (new_id_ii in 1:length(inserted_ids)){
           
           new_id = paste("dat1_ctrl", new_id_ii , sep = "_")
+          # legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]], " - ", handler_list[[new_id]]$legend_choices ) # handler_list[[lengend_choices]]
           legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]] )
           
           single_color_sequential_palettes <- c("Reds", "Blues", "Greens", "Purples", "Oranges", "Greys")
@@ -635,6 +638,7 @@ server <- function(input, output, session) {
                map_data = df_list[[new_id]], 
                input_choice = handler_list[[new_id]],
                legend_title=legend_title,
+               # legend_title = new_handler['legend_choices'],
                showHeatmap = input$heatmap, 
                palette_name =  single_color_sequential_palettes[new_id_ii])
           

@@ -340,7 +340,7 @@ map_fun_IYR <- function(map, data, colors, legend_title = "Input to Yield Ratio"
 
 switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE){
   
-  labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1)) 
+  labFormat_transform <- labelFormat(transform = function(x) round(exp(x) - 1, 7)) 
   print(paste0('switch_map', input_choice))
   
   if (input_choice == 'EA water quality GCMS/LCMS data') {
@@ -359,18 +359,33 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     } else {
       
       fillColor = colorNumeric(palette = brewer.pal(9,palette_name), domain = map_data$log_Concentration)
+      # break_values <- seq(min(map_data$log_Concentration), max(map_data$log_Concentration), length.out = 5)
       
       m = m %>% map_fun_EA_WQ_gcms(map_data,
                                    fillColor =  ~fillColor(log_Concentration),
                                    legend_title= legend_title) %>%
-        addLegend(data = map_data,
-                  position = "bottomright",
-                  pal = fillColor,
-                  values = ~map_data$log_Concentration,
-                  title = paste0(legend_title ,"</br>","Concentration ug/l"),
-                  opacity = 1,
-                  group = legend_title,
-                  labFormat = labFormat_transform)
+        # addLegend(data = map_data,
+        #           position = "bottomright",
+        #           pal = fillColor,
+        #           values = ~map_data$log_Concentration,
+        #           title = paste0(legend_title ,"</br>","Concentration ug/l"),
+        #           opacity = 1,
+        #           group = legend_title,
+        #           labFormat = labFormat_transform,
+        #           orientation = "horizontal")
+        
+        
+        addLegendNumeric(data = map_data,
+                         position = "bottomright",
+                         pal = fillColor,
+                         values = ~map_data$log_Concentration,
+                         title = htmltools::HTML(paste0(legend_title, "<br>", "Concentration ug/l")),
+                         shape = "rect",
+                         orientation = "horizontal",
+                         width = 200,
+                         height = 10,  
+                         numberFormat = function(x) format(round(exp(x) - 1, 3), trim = TRUE))
+        
     }
     
   } else if (input_choice == 'EA pollution inventory 2021') {
@@ -381,14 +396,25 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_EA_pollution(map_data,
                                    fillColor =  ~fillColor(log_quantity_released_tons),
                                    legend_title= legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = fillColor,
-                values = map_data$log_quantity_released_tons,
-                title = paste0(legend_title ,"</br>","tonnes"),
-                opacity = 1,
-                group = legend_title,
-                labFormat = labFormat_transform)
+      # addLegend(data = map_data,
+      #           position = "bottomright",
+      #           pal = fillColor,
+      #           values = map_data$log_quantity_released_tons,
+      #           title = paste0(legend_title ,"</br>","tonnes"),
+      #           opacity = 1,
+      #           group = legend_title,
+      #           labFormat = labFormat_transform)
+    
+      addLegendNumeric(data = map_data,
+                     position = "bottomright",
+                     pal = fillColor,
+                     values = ~map_data$log_quantity_released_tons,
+                     title = htmltools::HTML(paste0(legend_title, "<br>", "tonnes")),
+                     shape = "rect", 
+                     orientation = "horizontal", 
+                     width = 200,
+                     height = 10,
+                     numberFormat = function(x) format(round(exp(x) - 1, 3), trim = TRUE))
     
     
   } else if (input_choice == 'Predatory Bird Monitoring Scheme') {
@@ -404,9 +430,20 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
       showNotification("No data available for this selection.", type = "error", duration = 5)
       
       # Add dummy legend with message
-      m %>% addLegend("bottomright", pal = dummy_palette, values = c(0, 0),
-                      title = paste(legend_title, "</br>No data available for this selection"),
-                      opacity = 1)
+      # m %>% addLegend("bottomright", pal = dummy_palette, values = c(0, 0),
+      #                 title = paste(legend_title, "</br>No data available for this selection"),
+      #                 opacity = 1)
+      
+      m %>% addLegendNumeric(
+        position = "bottomright", pal = dummy_palette, values = c(0, 0),
+        title = htmltools::HTML(paste0(legend_title, "</br>No data available for this selection")),
+        shape = "rect",
+        orientation = "horizontal",
+        width = 200,
+        height = 10
+        
+      )
+      
     })
     
   } else if (input_choice == 'PFAS') {
@@ -419,13 +456,16 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
       showNotification("No data available for this selection.", type = "error", duration = 5)
       
       # Add a message in the legend indicating no data
-      m = m %>% addLegend(
-        position = "bottomright",
-        pal = dummy_palette,
-        values = c(0, 0),
-        title = paste0(legend_title, "</br>", "No data available for this selection"),
-        opacity = 1
-      )
+      m = m %>% addLegendNumeric(
+            position = "bottomright",
+            pal = dummy_palette,
+            values = c(0, 0),
+            title = htmltools::HTML(paste0(legend_title, "<br>", "No data available for this selection")),
+            shape = "rect",
+            orientation = "horizontal",
+            width = 200,
+            height = 10
+          )
     } else {
       #m = m %>% map_fun_pfas(map_data,fillColor = color_data$RGB[new_id_ii])
       # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
@@ -446,14 +486,19 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
                              legend_title= legend_title,
                              showHeatmap  = showHeatmap
       ) %>%
-        addLegend(data = map_data,
+        addLegendNumeric(data = map_data,
                   position = "bottomright",
                   pal = fillColor,
                   values = map_data$transform_value,
-                  title = paste0(legend_title ,"</br>","ng/l"),
-                  opacity = 1,
+                  title = htmltools::HTML(paste0(legend_title ,"<br>","ng/l")),
                   group = legend_title,
-                  labFormat = labFormat_transform)
+                  #labFormat = labFormat_transform,
+                  numberFormat = function(x) format(round(exp(x) - 1, 3), trim = TRUE),
+                  shape = "rect",
+                  orientation = "horizontal",
+                  width = 200,
+                  height = 10
+                  )
       
     }
   } else if (input_choice == "HadUK-Grid Annual Rainfall") {
@@ -470,14 +515,18 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_rain(map_data,
                            colors =  fillColor,
                            legend_title = legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = fillColor,
-                values = values(map_data),
-                title = paste0(legend_title ,"</br>","mm"),
-                group = legend_title,
-                na.label = NULL) 
-    
+      addLegendNumeric(data = map_data,
+                      position = "bottomright",
+                      pal = fillColor,
+                      values = values(map_data),
+                      title = htmltools::HTML(paste0(legend_title ,"<br>","mm")),
+                      group = legend_title,
+                      # na.label = NULL,
+                      shape = "rect",
+                      orientation = "horizontal",
+                      width = 200,
+                      height = 10
+                      ) 
     
     
   } else if (input_choice == 'APIENS') {
@@ -488,13 +537,17 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_apiens(map_data,
                              fillColor =  ~fillColor(Value),
                              legend_title= legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = fillColor,
-                values = ~map_data$Value,
-                title = paste0(legend_title ,"</br>",unique(map_data$Unit)),
-                opacity = 1,
-                group = legend_title)
+      addLegendNumeric(data = map_data,
+                      position = "bottomright",
+                      pal = fillColor,
+                      values = ~map_data$Value,
+                      title = htmltools::HTML(paste0(legend_title ,"</br>",unique(map_data$Unit))),
+                      group = legend_title,
+                      shape = "rect",
+                      orientation = "horizontal",
+                      width = 200,
+                      height = 10
+                      )
     
     
   } else if (input_choice == 'UK cats and dogs density') {
@@ -502,36 +555,17 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_catsdogs(map_data,
                                palette_name =  palette_name,
                              legend_title= legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = colorNumeric(palette_name, NULL),
-                values = ~Value,
-                title = paste0(legend_title),
-                opacity = 1,
-                group = legend_title)
+      addLegendNumeric(data = map_data,
+                      position = "bottomright",
+                      pal = colorNumeric(palette_name, NULL),
+                      values = ~Value,
+                      title = htmltools::HTML(paste0(legend_title)),
+                      group = legend_title,
+                      shape = "rect",
+                      orientation = "horizontal",
+                      width = 200,
+                      height = 10)
     
-    
-  }  else if (input_choice == "HadUK-Grid Annual Rainfall") {
-    
-    rain_values <- values(map_data)
-    rain_values <- rain_values[!is.na(rain_values)]
-    
-    fillColor <- colorNumeric(
-      palette = brewer.pal(9,palette_name),
-      domain=range(rain_values),
-      na.color = "transparent"
-    )
-    
-    m = m %>% map_fun_rain(map_data,
-                           colors =  fillColor,
-                           legend_title = legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = fillColor,
-                values = values(map_data),
-                title = paste0(legend_title ,"</br>","mm"),
-                group = legend_title,
-                na.label = NULL) 
     
   } else if (input_choice == "EU Soil metals") {
     
@@ -569,13 +603,17 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_IYR(map_data,
                            colors =  fillColor,
                            legend_title = legend_title) %>%
-      addLegend(data = map_data,
-                position = "bottomright",
-                pal = fillColor,
-                values = values(map_data),
-                title = paste0(legend_title ,"</br>","[unitless]"),
-                group = legend_title,
-                na.label = NULL) 
+      addLegendNumeric(data = map_data,
+                  position = "bottomright",
+                  pal = fillColor,
+                  values = values(map_data),
+                  title = htmltools::HTML(paste0(legend_title ,"<br>","[unitless]")),
+                  group = legend_title,
+                  # na.label = NULL,
+                  shape = "rect",
+                  orientation = "horizontal",
+                  width = 200,
+                  height = 10) 
     
   } 
 
