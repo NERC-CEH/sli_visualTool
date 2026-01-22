@@ -16,9 +16,39 @@ library(scales)
 dat_choices_pt <- c("EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
-                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)")
+                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", "Custom file upload (.csv)")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
+
+csv_upload_mod_server <- function(id) {
+  # module for CSV file upload
+  moduleServer(id, function(input, output, session) {
+    
+    data <- reactive({
+      req(input$csv_filepath)  # Wait until file is uploaded
+      read.csv(input$csv_filepath$datapath)
+    })
+    
+    print(data())
+    
+    output$table <- renderTable({
+      req(data())  # Only render if data is available
+      data()
+    })
+    
+    # # update csv_upload_sliders to display column choices
+    
+    csv_colnames <- data %>% colnames() 
+    
+    observeEvent(input$csv_filepath, {
+      updateSelectInput(session, "lat_col", choices = csv_colnames)
+      updateSelectInput(session, "long_col", choices = csv_colnames)
+    })
+    
+    # Optionally return the reactive data for use elsewhere
+    return(list(data=data, long_col=input$long_col, lat_col=input$lat_col))
+  })
+}
 
 datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
   
@@ -39,7 +69,7 @@ datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
                                ),
                                choices = dat_choices),
                    uiOutput(ns("ui_placeholder")),
-                   uiOutput(ns("dynamic_select"))
+                   uiOutput(ns("dynamic_select")) 
                    
   )
 }
@@ -84,9 +114,10 @@ datselect_mod_server <-  function(id) {
     return_value <- reactive({
       input$data_choice
     })
+    print(input$data_choice)
     ns <- session$ns
     
-#    filtered_data <- reactiveVal()
+    #    filtered_data <- reactiveVal()
     
     # conditional UI
     output$ui_placeholder <- renderUI({
@@ -110,6 +141,8 @@ datselect_mod_server <-  function(id) {
         cats_dogs_sliders(id)
       } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
         IYR_sliders(id)
+      } else if (type == 'Custom file upload (.csv)') {
+        csv_upload_sliders(id)
       } else {
         p('The selected dataset will be added soon.')
       }
@@ -120,89 +153,133 @@ datselect_mod_server <-  function(id) {
     
     # # update pbms_sliders selectinput for otters and sparrowhawks
     observeEvent(input$var_biota, {
-        if (input$var_biota == 'Otter'){
-          updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices))
-        } else if (input$var_biota == 'Sparrowhawk') {
-          updateSelectInput(session, "var_map_sgl", choices = list( `SGARs` = SGARs_choices))
-        } else if (input$var_biota == 'Buzzard') {
-          updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices))
-        }    
+      if (input$var_biota == 'Otter'){
+        updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices))
+      } else if (input$var_biota == 'Sparrowhawk') {
+        updateSelectInput(session, "var_map_sgl", choices = list( `SGARs` = SGARs_choices))
+      } else if (input$var_biota == 'Buzzard') {
+        updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices))
+      }    
     })
     
     
     # # update ea_gcms_sliders to display chemical info
     
     ref_gcms<- data_process_chemref() # put in the main app to only load once?
-
+    
     observeEvent(input$gcms_compound, {
       req(input$gcms_compound %in% ref_gcms$Compound_Name)
       output$chem_info <- renderTable(
         
         ref_gcms %>% filter(Compound_Name == input$gcms_compound) %>% 
-                dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`) %>% t()
+          dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`) %>% t()
         ,
         rownames = TRUE,
         colnames = FALSE,
       )
     })
+
+    # legend_data <- reactive({
+    #   type <- req(input$data_choice)
+    #   if (type == "EA pollution inventory 2021") {
+    #      paste(input$IndustrySector)
+    #     
+    #   # } else if (type == "EA water quality GCMS/LCMS data") {
+    #     # legend_choices <- "Dummy Legend gcms" #paste(input$gcms_compound)
+    #     
+    #     # } else if (type == "Predatory Bird Monitoring Scheme") {
+    #     # } else if (type == "PFAS") {
+    #     # } else if (type == "HadUK-Grid Annual Rainfall") {
+    #     # } else if (type == "APIENS") {
+    #     # } else if (type == 'EU Soil metals') {
+    #     # } else if (type == 'UK cats and dogs density') {
+    #     # } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
+    #   } else {
+    #     'dummy'
+    #   }
+    # })
     
     # alternative: 
     filtered_data <- reactive({
       type <- req(input$data_choice)
       print(type)
+      legend_choices <- NULL
+      
       if (length(type) == 0){
         data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # Hack to return some valid data while it waits for user input
       } else {
-          if(type=='EA pollution inventory 2021') {
-            data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
-          } else if (type =="Predatory Bird Monitoring Scheme") {
-            data_process_pbms(var_biota = input$var_biota, 
-                              var_map_sgl = input$var_map_sgl)[[1]] %>% 
-              filter(year >= input$year_slider[1], year <= input$year_slider[2])
-          } else if (type == "PFAS") {
-            data_process_pfas(selected_matrix = input$matrix,
-                               selected_substance = input$substance,
-                               start_year = input$year_slider[1],
-                               end_year = input$year_slider[2],
-                               transform_method = input$transform)[[1]]
-              
-          } else if (type == "HadUK-Grid Annual Rainfall") {
-            data_process_haduk_rain(year_slider = input$year_slider)
-            
-            
-          } else if (type == "APIENS") {
-            data_process_apiens(start_year = input$year_slider[1],
-                                end_year = input$year_slider[2],
-                                var_choices = input$variable_choices,
-                                necd_choices = input$necd_choices)[[1]]
-          } else if (type == "EU Soil metals") {
-            data_process_EUSO(euso_var_choices = input$euso_var_choices)  
-          } else if (type == "UK cats and dogs density") {
-            data_process_catsdogs(var_choice = input$cats_or_dogs)  
-          } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
-            data_process_IYR(IYR_choice = input$IYR_choice)  
-          } else {
-            data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
-               filter(year >= input$year_slider[1], year <= input$year_slider[2])
-          }
+        if(type=='EA pollution inventory 2021') {
+          data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
+        } else if (type =="Predatory Bird Monitoring Scheme") {
+          data_process_pbms(var_biota = input$var_biota, 
+                            var_map_sgl = input$var_map_sgl)[[1]] %>% 
+            filter(year >= input$year_slider[1], year <= input$year_slider[2])
+        } else if (type == "PFAS") {
+          data_process_pfas(selected_matrix = input$matrix,
+                            selected_substance = input$substance,
+                            start_year = input$year_slider[1],
+                            end_year = input$year_slider[2],
+                            transform_method = input$transform)[[1]]
+          
+        } else if (type == "HadUK-Grid Annual Rainfall") {
+          data_process_haduk_rain(year_slider = input$year_slider)
+          
+          
+        } else if (type == "APIENS") {
+          data_process_apiens(start_year = input$year_slider[1],
+                              end_year = input$year_slider[2],
+                              var_choices = input$variable_choices,
+                              necd_choices = input$necd_choices)[[1]]
+        } else if (type == "EU Soil metals") {
+          data_process_EUSO(euso_var_choices = input$euso_var_choices)  
+        } else if (type == "UK cats and dogs density") {
+          data_process_catsdogs(var_choice = input$cats_or_dogs)  
+        } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
+          data_process_IYR(IYR_choice = input$IYR_choice)  
+        } else if (type == " Custom file upload (.csv)") {
+          csv_upload_mod_server(id)         
+         
+        } else {
+          data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
+            filter(year >= input$year_slider[1], year <= input$year_slider[2])
+        }
       }
     })
+    print("filtered_data: ")
     print(filtered_data())
     
-      ## if we later want to do some more sophisticated logic
-      ## we can add reactives to this list
-      list(return_value = return_value, filtered_data = filtered_data)
-    })
-  }
+    ## if we later want to do some more sophisticated logic
+    ## we can add reactives to this list
+    list(return_value = return_value, filtered_data = filtered_data )#, legend_data = legend_data)
+  })
+}
 
 DT_mod_server <-  function(id, tbl_data) {
   moduleServer(
     id,
     function(input, output, session) {
-      #  ns <- session$ns
-      # Render the reactive df `tbl_data` as a table
-      output$outputTable  <- renderDT({
-        datatable(tbl_data(), options = list(scrollX = TRUE))
+      ns <- session$ns # this was commented out
+      
+      
+      
+        # Render the reactive df `tbl_data` as a table
+        output$outputTable  <- renderDT({
+          
+          tryCatch({
+            datatable(tbl_data(), options = list(scrollX = TRUE))
+          
+          }, error = function(e) {
+            
+            # print(e$message)
+            output$error_message <- renderUI({
+              div("Gridded data cannot be shown as a table")
+            })
+            NULL
+          
+        })
+        
+
+        
       })
     })
 }
@@ -212,15 +289,12 @@ DT_mod_ui <- function(id, dataset_i) {
   ns <- NS(id)
   accordion_panel( paste0('Table for dataset ',dataset_i ,':'),
                    h3("Selected data"),
-                   
               
-                   
-               DTOutput(ns("outputTable"))
-  
+                  uiOutput(ns("error_message")),  # Placeholder for error messages    
+                  DTOutput(ns("outputTable"))
                
                )
-  
-  
+
 }
 
 CB_color_cycle = rep(c("darkorange","purple","cyan4",'#377eb8', '#4daf4a',
@@ -253,7 +327,7 @@ plot_mod_server <-  function(id, tbl_data) {
           #   need(nrow(tbl_data()) > 0, message = FALSE)
           # )
           #
-          # tryCatch({
+          tryCatch({
             
             suppressWarnings({
               data1 = tbl_data()
@@ -262,7 +336,7 @@ plot_mod_server <-  function(id, tbl_data) {
               
               ## plot the common features for all graphs
               p1<-ggplot(data1, aes(x=.data[[input$plot_xvar]], .data[[input$plot_yvar]], color=.data[[input$plot_colorvar]])) + 
-                geom_point(size = 0.8) +
+                geom_point(size = 4) +
                 theme_bw() +
                 # labs(x=vars_Y[match(input$set_variable_Y, vars_Y)] %>% names(),
                 #      y=vars_Y[match(input$set_variable_Y2,vars_Y)] %>% names()) + 
@@ -289,14 +363,18 @@ plot_mod_server <-  function(id, tbl_data) {
             })   
             
             
-          # }, error = function(e) {
-          #   print(e$message)
-          #   output$plot_placeholder <- renderUI({
-          #     div("Gridded data cannot be plotted.")
-          #   })
-          #   NULL
-          #   
-          # })
+          }, error = function(e) {
+            if (grepl("argument is of length zero", e$message)) {
+              return(NULL)  # Ignore this specific error and continue
+            }
+            
+            print(e$message)
+            output$plot_placeholder <- renderUI({
+              div("Gridded data cannot be plotted.")
+            })
+            NULL
+
+          })
           
       })
           
