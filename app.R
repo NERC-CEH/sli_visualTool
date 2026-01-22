@@ -11,7 +11,6 @@ library(raster)
 library(dplyr)
 library(leaflet.extras)
 library(leafem)
-library(shinyWidgets)
 library(readxl)
 library(sp)
 library(sf)
@@ -597,6 +596,8 @@ server <- function(input, output, session) {
     print('press update button')
     showNotification("Map updating...", type = "warning",duration = 1.5)
     
+   
+    
     m = leafletProxy("myMap") %>% 
       removeLayersControl() %>% 
       clearShapes() %>% 
@@ -619,7 +620,28 @@ server <- function(input, output, session) {
       handle()
     })
     
-    #colour palettes
+    
+    
+    
+    #somewhere in your reactive server code
+    # list_of_inputs <- reactiveValuesToList(input)
+    # print("list_of_inputs:")
+    # print(list_of_inputs)
+
+    # getCurrentSelections <- reactive({
+    #   list_of_inputs <- reactiveValuesToList(input)
+    #   list_of_inputs
+    # })
+    
+    getCurrentSelections <- eventReactive(input$updateBtn, {
+      # Extract only inputs that match the current pattern (if they are being dynamically created)
+      list_of_inputs <- reactiveValuesToList(input)
+      list_of_inputs
+    })
+    
+    # print("list_of_inputs reactive:  ")
+    # print(getCurrentSelections())
+    
     
     
     if (length(inserted_ids) > 0) {
@@ -628,8 +650,58 @@ server <- function(input, output, session) {
         for (new_id_ii in 1:length(inserted_ids)){
           
           new_id = paste("dat1_ctrl", new_id_ii , sep = "_")
-          # legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]], " - ", handler_list[[new_id]]$legend_choices ) # handler_list[[lengend_choices]]
-          legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]] )
+          
+          # # unpack list_of_inputs to create legend
+          # list_of_inputs <- getCurrentSelections()
+          # inputs_for_legend <- list_of_inputs[grep(new_id, names(list_of_inputs) )]
+          # print(c("inputs_for_legend:   ", inputs_for_legend))
+          # 
+          # # # concatenate year slider inputs with hyphen
+          # # legend_items <- c()
+          # # for (item in inputs_for_legend) {
+          # #   if (is.numeric(item)) {
+          # #     legend_items <- c(legend_items, paste(item, collapse = "-"))
+          # #   } else {
+          # #     legend_items <- c(legend_items, item)
+          # #   }
+          # # }
+          # 
+          # 
+          # for (name in names(inputs_for_legend)) {
+          #   
+          # 
+          #   # if else logic to say if datachoice = PFAS only use these specific inputs
+          #   if (grepl("data_choice", name )) {
+          #     
+          #     print(c("Name: ", name))
+          #     print(c("inputs_for_legend[[name]]", inputs_for_legend[[name]]))
+          #     
+          #     if (inputs_for_legend[[name]] == "EA pollution inventory 2021") {
+          #       # input_calls <- extract_input_calls(ea_pollution_sliders)
+          #       Industry_Sector <- paste0(new_id, "-IndustrySector")
+          #       legend_string <- inputs_for_legend[[Industry_Sector]]
+          # 
+          #       } else if (inputs_for_legend[[name]] == "EA water quality GCMS/LCMS data") {
+          #         paste0(new_id, "var_biota")
+          #         legend_string <- paste(inputs_for_legend$var_biota, inputs_for_legend$var_map_sgl, inputs_for_legend$year_slider, sep = "<br>")
+          #         
+          #         
+          #       } else if (item == "Predatory Bird Monitoring Scheme") {
+          #       } else if (item == "PFAS") {
+          #       } else if (item == "HadUK-Grid Annual Rainfall") {
+          #       } else if (item == "APIENS") {
+          #       } else if (item == 'EU Soil metals') {
+          #       } else if (item == 'UK cats and dogs density') {
+          #       } else if (item == 'AgZero+ Input to Yield Ratio (IYR)') {
+          #       }
+          #   }
+          # }
+          
+          # legend_string <- paste(unlist(legend_string), collapse = "<br>")
+          
+          legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]])
+          # legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]], "<br>", legend_string)
+          
           
           single_color_sequential_palettes <- c("Reds", "Blues", "Greens", "Purples", "Oranges", "Greys")
           
@@ -890,9 +962,9 @@ server <- function(input, output, session) {
     hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>%
     addControl(rr, position = "bottomleft")
   
-  
-  
-  ######################### indicator map by nation##  SLOW #########
+  # 
+  # 
+  # ######################### indicator map by nation##  SLOW #########
   uk_country <- read_sf("datasets/infuse_ctry_2011")
   uk_country <- st_transform(uk_country , 4326)
   uk_country <- rmapshaper::ms_simplify(uk_country) # maybe save this to be faster
@@ -908,9 +980,9 @@ server <- function(input, output, session) {
   uk_country$`spears` <- c(NA,NA,0.55,NA)
   uk_country$`Paracetamol` <- c(NA,107.3,75.79,93.97)
   uk_country$`Trimethoprim` <- c(NA,0.98,2.866,0.9)
-  
-  
-  
+
+
+
   indicatorNationMap = leaflet(uk_country) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
     addPolygons(color = '#A9A9A9', weight = 1, smoothFactor = 0.5,
                 opacity = 1.0, fillOpacity = 0.5,
@@ -926,12 +998,12 @@ server <- function(input, output, session) {
                                 "<br/>","Mean Copper (mg kg<sup>-1</sup>): ","<b>", sprintf("%.1f", Cu_mean),"</b>",
                                 "<br/>","Mean Paracetamol in estuaries (ng l<sup>-1</sup>): ","<b>", sprintf("%.1f", Paracetamol),"</b>",
                                 "<br/>","Mean Trimethoprim in estuaries (ng l<sup>-1</sup>): ","<b>", sprintf("%.1f", Trimethoprim),"</b>",
-                                
+
                                 "<br/>","SPEAR<sub>pesticide</sub> for Summer 2019: ","<b>", sprintf("%.1f", spears),"</b>",
                                 p(),
                                 "<br/>","SPEAR<sub>pesticide</sub> value is derived from  <a href='https://doi.org/10.1016/j.scitotenv.2023.166519' target='_blank'>Poyntz-Wright et al. 2023 </a>",
                                 "<br/>","(corrected) pharmaceutical values are derived from <a href='https://doi.org/10.1016/j.scitotenv.2019.04.182' target='_blank'>Lestingers et al. 2019</a>",
-                                
+
                                 "<p><font color='#c2c5cc'> &copy;" ,format(Sys.Date(), "%Y"),
                                 " UK Centre for Ecology and Hydrology </font></p>"
                 ),
@@ -942,7 +1014,7 @@ server <- function(input, output, session) {
 
   #output$regionMap = renderLeaflet(indicatorNationMap)
   # output$regionMap = renderLeaflet(regionMap)
-  
+
   observeEvent(input$RegtionOption, {
     if(input$RegtionOption == "Mean Phenanthrene by region"){
       output$regionMap = renderLeaflet(regionMap)
@@ -950,23 +1022,25 @@ server <- function(input, output, session) {
       output$regionMap = renderLeaflet(indicatorNationMap)
     }
   })
-  
-  
+
+
   output$barplot_indicator <- renderPlotly({
     pressures = data.frame(
       fieldname = c('Pesticides','Pharmaceuticals','Vet. medicine','Heavey metals', 'Predatory birds','Invertebrates','Land Use', 'Flooding'),
       value = c(0.35,0.77,0.1,0.79,0.12,0.6,0.38,0.1)
     )
     pressures$value_rev = 1.0-pressures$value
-    
+
     {ggplot(pressures %>% pivot_longer(cols = value:value_rev)%>% arrange(fieldname)) +
       geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
       theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
-      scale_fill_manual(values=c('#9EC979','#B91E22')) + 
+      scale_fill_manual(values=c('#9EC979','#B91E22')) +
       ggtitle(paste0(input$countryInd,': ',  input$compartmentInd, ' (illustrative)'))+
       coord_flip()} %>% ggplotly()
   })
-  
+
+
+
   
   
 }

@@ -16,9 +16,39 @@ library(scales)
 dat_choices_pt <- c("EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
-                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)")
+                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", "Custom file upload (.csv)")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
+
+csv_upload_mod_server <- function(id) {
+  # module for CSV file upload
+  moduleServer(id, function(input, output, session) {
+    
+    data <- reactive({
+      req(input$csv_filepath)  # Wait until file is uploaded
+      read.csv(input$csv_filepath$datapath)
+    })
+    
+    print(data())
+    
+    output$table <- renderTable({
+      req(data())  # Only render if data is available
+      data()
+    })
+    
+    # # update csv_upload_sliders to display column choices
+    
+    csv_colnames <- data %>% colnames() 
+    
+    observeEvent(input$csv_filepath, {
+      updateSelectInput(session, "lat_col", choices = csv_colnames)
+      updateSelectInput(session, "long_col", choices = csv_colnames)
+    })
+    
+    # Optionally return the reactive data for use elsewhere
+    return(list(data=data, long_col=input$long_col, lat_col=input$lat_col))
+  })
+}
 
 datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
   
@@ -111,6 +141,8 @@ datselect_mod_server <-  function(id) {
         cats_dogs_sliders(id)
       } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
         IYR_sliders(id)
+      } else if (type == 'Custom file upload (.csv)') {
+        csv_upload_sliders(id)
       } else {
         p('The selected dataset will be added soon.')
       }
@@ -146,7 +178,7 @@ datselect_mod_server <-  function(id) {
         colnames = FALSE,
       )
     })
-    
+
     # legend_data <- reactive({
     #   type <- req(input$data_choice)
     #   if (type == "EA pollution inventory 2021") {
@@ -204,6 +236,9 @@ datselect_mod_server <-  function(id) {
           data_process_catsdogs(var_choice = input$cats_or_dogs)  
         } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
           data_process_IYR(IYR_choice = input$IYR_choice)  
+        } else if (type == " Custom file upload (.csv)") {
+          csv_upload_mod_server(id)         
+         
         } else {
           data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
             filter(year >= input$year_slider[1], year <= input$year_slider[2])

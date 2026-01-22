@@ -48,7 +48,7 @@ ea_gcms_sliders <- function(id) {
     tableOutput(NS(id,"chem_info")),
     # code("code displays your text similar to computer code"),
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
-                min = min(2013), max = max(2021),
+                min = min(2013), max = max(2024),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
     )
@@ -165,8 +165,8 @@ cats_dogs_sliders <- function(id) {
 IYR_sliders <- function(id) {
   tagList(
     selectInput(NS(id,"IYR_choice"), "Choose input to yield ratio for wheat:",
-                choices = c("Earthworms" = "earthworms",
-                            "Honeybees" = "honeybees",
+                choices = c("Pesticide risks to earthworms" = "earthworms",
+                            "Pesticide risks to Honeybees" = "honeybees",
                             "N fertilisers" = "nitrogen_fertilisers",
                             "P fertilisers" = "phosphorus_fertilisers")
     ),
@@ -181,5 +181,33 @@ Biotoxins_sliders <- function(id) {
                 choices = c("Amnesic Shellfish Poison (ASP, mg/kg) " = "ASP(mgPerkg)")
     ),
     p()
+  )
+}
+
+
+csv_upload_sliders <- function(id) {   
+  
+  tagList(
+    # HTML('<p align="center" style="font-weight: bold;color:orange">Note: This data is not intended for comparing the pollution contributions of different sectors.</p>'),
+    
+    fileInput(NS(id,"csv_filepath"), "Upload your own CSV File", accept = ".csv"),
+    
+    tags$style("
+             .btn-file {  
+             background-color:#0483A4; 
+             border-color: #0483A4; 
+             }
+
+             .progress-bar {
+             background-color: #99ddff;
+             }
+
+             "),
+    tableOutput(NS(id,"table")),
+    checkboxInput(NS(id,"if_filter"), "Filter by column values?", TRUE),
+    checkboxInput(NS(id,"if_colour"), "Colour points on map by column values?", TRUE),
+    selectInput(NS(id,"lat_col"), "Choose latitude column:", choices = NULL), 
+    selectInput(NS(id,"long_col"), "Choose longitude column:", choices = NULL), 
+    
   )
 }

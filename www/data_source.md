@@ -28,9 +28,9 @@ The thresholds are currently being developed.
 
 |       Data Layer        |                                                                                  Reference                                                                                  |     Publisher      | Extent | Threshold used |
 |:---------:|:---------------------------:|:---------:|:---------:|:---------:|
-| Rainfall and river flow | [Rainfall and river flow: weekly](https://www.gov.uk/government/publications/weekly-rainfall-and-river-flow-reports-for-england%20-%20use%20river%20flow?){target="_blank"} | Environment Agency |        |                |
+| Rainfall and river flow | [Rainfall and river flow: weekly](https://www.gov.uk/government/publications/weekly-rainfall-and-river-flow-reports-for-england){target="_blank"} | Environment Agency |        |                |
 
-[Flood Maps \| SEPA - Flood Maps \| SEPA](https://map.sepa.org.uk/floodmaps) – links to equivalent for England, Wales, NI (hard to plot)
+[Flood Maps \| SEPA - Flood Maps \| SEPA](https://beta.sepa.scot/flooding/flood-maps/) – links to equivalent for England, Wales, NI (hard to plot)
 
 #### *Biodiversity*
 

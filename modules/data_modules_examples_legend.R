@@ -14,17 +14,17 @@ datselect_mod_ui <- function(id, dataset_i) {
   
   dat_choices <- c("EA water quality GCMS data", "EA pollution inventory 2021")
   
-    wellPanel(
-      selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
-                  choices = dat_choices),
-      uiOutput(ns("ui_placeholder")),
-      uiOutput(ns("dynamic_select")) #,
-      # selectInput("gcms_compound", "Choose compound:",
-      #             c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-      #             ),
-      # selectInput("substance", "Choose pollutant:", 
-      #             c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)" )
-      #            ),
+  wellPanel(
+    selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
+                choices = dat_choices),
+    uiOutput(ns("ui_placeholder")),
+    uiOutput(ns("dynamic_select")) #,
+    # selectInput("gcms_compound", "Choose compound:",
+    #             c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
+    #             ),
+    # selectInput("substance", "Choose pollutant:", 
+    #             c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)" )
+    #            ),
     
   )
 }
@@ -49,94 +49,6 @@ unique_industry_sector <- c('Agriculture','Water Industry')
 #'   \item{facetvar}{reactive character indicating variable used for defining plot facets}
 #' }
 #' 
-#' ## module approach 1: observe event
-datselect_mod_server <-  function(id) {
-  moduleServer(
-    id,
-    function(input, output, session) {
-      output$dynamic_select <- renderUI({
-              ns <- session$ns
-              #req(ns(input$data_choice))
-              
-              # selectInput(ns("IndustrySector"), "Choose Industry Sector:",
-              #             #c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)")
-              #             unique_industry_sector
-              # )
-              if(ns(input$data_choice) == "EA pollution inventory 2021") {
-                  selectInput(ns("IndustrySector"), "Choose Industry Sector:",
-                              #c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)")
-                              unique_industry_sector
-                  )
-              } else if(ns(input$data_choice) == "EA water quality GCMS data") {
-                  tagList(
-                    selectInput(ns("gcms_compound"), "Choose compound:",
-                                c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-                    ),
-                    sliderInput(ns("year_slider"), "Select Year Range:",
-                                min = min(2013), max = max(2021),
-                                value = c("2020", "2021")
-                    )
-
-
-                  )
-        }
-                              })
-    # choice for which data to plot
-    observeEvent(input$data_choice, {
-      req(input$data_choice)
-      if(input$data_choice == "EA pollution inventory 2021") {
-        output$dynamic_select <- renderUI({
-          ns <- session$ns
-          selectInput(ns("IndustrySector"), "Choose Industry Sector:",
-                      #c("Ammonia", "Arsenic", "Mercury", "Particulate matter - total", "Phenols - total as C", "Pentachlorophenol (PCP)", "Perfluoro octanyl sulphate (PFOS)", "Polychlorinated biphenyls (PCBs)")
-                      unique_industry_sector
-          )
-        })
-      } else if(input$data_choice == "EA water quality GCMS data") {
-        output$dynamic_select <- renderUI({
-          ns <- session$ns
-          tagList(
-            selectInput(ns("gcms_compound"), "Choose compound:",
-                        c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-            ),
-            sliderInput(ns("year_slider"), "Select Year Range:",
-                        min = min(2013), max = max(2021),
-                        value = c("2020", "2021")
-            )
-
-
-          )
-        })
-      }
-    })
-  
-    }
-  )
-}
-
-#' ## module approach 2:min example
-
-datselect_mod_server <-  function(id) {
-  moduleServer(
-    id,
-    function(input, output, session) {
-      return_value <- reactive({input$data_choice})
-      ns <- session$ns
-      output$ui_placeholder <- renderUI({
-        type <- req(input$data_choice)
-        if(type == "EA pollution inventory 2021") {
-          textInput(ns("inner_element"), "Text:")
-        } else if (type == "EA water quality GCMS data") {
-          numericInput(ns("inner_element"), "Value:", 0)
-        }
-      })
-      
-      ## if we later want to do some more sophisticated logic
-      ## we can add reactives to this list
-      list(return_value = return_value) 
-    }
-  )
-}
 
 
 
@@ -147,6 +59,7 @@ datselect_mod_server <-  function(id) {
     return_value <- reactive({
       input$data_choice
     })
+    print(input$data_choice)
     ns <- session$ns
     
     #    filtered_data <- reactiveVal()
@@ -216,11 +129,11 @@ datselect_mod_server <-  function(id) {
       legend_choices <- NULL
       
       if (length(type) == 0){
-        data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # Hack to return some valid data while it waits for user input
+        data_out <- data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # Hack to return some valid data while it waits for user input
         legend_choices <- "Dummy Legend"
       } else {
         if(type=='EA pollution inventory 2021') {
-          data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
+          data_out <- data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 
           legend_choices <- "Dummy legend EA pollution" # paste(input$IndustrySector)
         } else if (type =="Predatory Bird Monitoring Scheme") {
           data_process_pbms(var_biota = input$var_biota, 
@@ -249,20 +162,21 @@ datselect_mod_server <-  function(id) {
         } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
           data_process_IYR(IYR_choice = input$IYR_choice)  
         } else {
-          data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
+          data_out <- data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
             filter(year >= input$year_slider[1], year <= input$year_slider[2])
           legend_choices <- "Dummy Legend gcms" #paste(input$gcms_compound)
         }
       }
+      list(data = data_out, legend_choices = legend_choices)
     })
+    print("filtered_data: ")
     print(filtered_data())
     
     ## if we later want to do some more sophisticated logic
     ## we can add reactives to this list
-    list(return_value = return_value, filtered_data = filtered_data, legend_choices = legend_choices)
+    list(return_value = return_value, filtered_data = filtered_data)
   })
 }
-
 
 
 
@@ -281,14 +195,14 @@ ea_pollution_sliders <- function(id) {
 
 ea_gcms_sliders <- function(id) {               
   tagList(
-      selectInput((NS(id,"gcms_compound")), "Choose compound:",
-                  c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
-      ),
-      sliderInput((NS(id,"year_slider")), "Select Year Range:",
-                  min = min(2013), max = max(2021),
-                  value = c("2020", "2021")
-      )
+    selectInput((NS(id,"gcms_compound")), "Choose compound:",
+                c("Phenanthrene", "Benzothiazole", "Cocaine", "Ibuprofen", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol")
+    ),
+    sliderInput((NS(id,"year_slider")), "Select Year Range:",
+                min = min(2013), max = max(2021),
+                value = c("2020", "2021")
     )
+  )
 }
 
 datselect_mod_server <-  function(id) {
@@ -396,21 +310,21 @@ collapseBox <- function(id, title, ..., open = FALSE, style = NULL) {
 ui <- fluidPage(  
   sidebarLayout(
     sidebarPanel(
-  div(id="placeholder"),
-  actionButton("insertBtn", "Add Line",width = '100%'),p(),
-  actionButton("removeBtn", "Remove dataset",width = '100%')
-  
+      div(id="placeholder"),
+      actionButton("insertBtn", "Add Line",width = '100%'),p(),
+      actionButton("removeBtn", "Remove dataset",width = '100%')
+      
     ),
-  mainPanel(verbatimTextOutput("out"),
-            collapseBox("SomePanelType1_ParamBoxOpen",
-                            title="Custom parameters",
-                            open=FALSE,
-                            selectInput("SomePanelType1_Thing",
-                                label="What thing?",
-                                choices=LETTERS, selected="A"
-                            )
-                        )
-            )
+    mainPanel(verbatimTextOutput("out"),
+              collapseBox("SomePanelType1_ParamBoxOpen",
+                          title="Custom parameters",
+                          open=FALSE,
+                          selectInput("SomePanelType1_Thing",
+                                      label="What thing?",
+                                      choices=LETTERS, selected="A"
+                          )
+              )
+    )
   )
 )
 
@@ -432,60 +346,60 @@ datselect_mod_ui <- function(id, dataset_i) {
   dat_choices <- c("EA water quality GCMS data", "EA pollution inventory 2021")
   
   accordion_panel( paste0('Dataset ',dataset_i ,':'),
-    selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
-                choices = dat_choices),
-    uiOutput(ns("ui_placeholder")),
-    uiOutput(ns("dynamic_select")),
-    open=TRUE
-    
+                   selectInput(ns("data_choice"), paste0("Choose dataset ",dataset_i, ":"), 
+                               choices = dat_choices),
+                   uiOutput(ns("ui_placeholder")),
+                   uiOutput(ns("dynamic_select")),
+                   open=TRUE
+                   
   )
 }
 
 ui <- page_fillable(title = 'Systems Level Indicator Visual Tool',
                     theme = bs_theme(version = 5),
-                h1('Chemcial Pollution and the Environment'),
-  # or use page_navbar
-  navset_underline(
-    nav_panel(title = "Spatial Trends", 
-        card(
-          #card_header("Card with sidebar"),
-          layout_sidebar(
-        sidebar = sidebar(width = 400,
-            accordion(
-            div(id="placeholder"),
-            multiple = TRUE
-            ),
-            actionButton("insertBtn", "Add Line",width = '100%'),p(),
-            actionButton("removeBtn", "Remove dataset",width = '100%')
-          ),
-        navset_card_underline(
-         # title = "Visualizations",
-          nav_spacer(),
-          nav_panel("Map",
-          verbatimTextOutput("out"),
-         
-        accordion(
-        accordion_panel(
-          "Other controls",
-          "Other controls go here"
-        ),
-        open=FALSE
-      )
-        ),
-        nav_panel("Table", tableOutput("table")) 
-      )
-    )
-    )),
-    nav_panel(title = "Indicator", p("Second tab content.")),
-    nav_panel(title = "Time series", p("Third tab content")),
-    nav_panel(title = "Data Sources", tags$iframe(src='../../rstudio-visualtool/data_source.html')),
-    nav_spacer(),
-    nav_menu(
-      title = "Links",
-      nav_item(link_shiny),
-      nav_item(link_posit)
-    )
-  )
+                    h1('Chemcial Pollution and the Environment'),
+                    # or use page_navbar
+                    navset_underline(
+                      nav_panel(title = "Spatial Trends", 
+                                card(
+                                  #card_header("Card with sidebar"),
+                                  layout_sidebar(
+                                    sidebar = sidebar(width = 400,
+                                                      accordion(
+                                                        div(id="placeholder"),
+                                                        multiple = TRUE
+                                                      ),
+                                                      actionButton("insertBtn", "Add Line",width = '100%'),p(),
+                                                      actionButton("removeBtn", "Remove dataset",width = '100%')
+                                    ),
+                                    navset_card_underline(
+                                      # title = "Visualizations",
+                                      nav_spacer(),
+                                      nav_panel("Map",
+                                                verbatimTextOutput("out"),
+                                                
+                                                accordion(
+                                                  accordion_panel(
+                                                    "Other controls",
+                                                    "Other controls go here"
+                                                  ),
+                                                  open=FALSE
+                                                )
+                                      ),
+                                      nav_panel("Table", tableOutput("table")) 
+                                    )
+                                  )
+                                )),
+                      nav_panel(title = "Indicator", p("Second tab content.")),
+                      nav_panel(title = "Time series", p("Third tab content")),
+                      nav_panel(title = "Data Sources", tags$iframe(src='../../rstudio-visualtool/data_source.html')),
+                      nav_spacer(),
+                      nav_menu(
+                        title = "Links",
+                        nav_item(link_shiny),
+                        nav_item(link_posit)
+                      )
+                    )
 )
 
 
@@ -496,27 +410,36 @@ server <- function(input, output, session) {
   # observer to insert UI for another dataset
   observeEvent(input$insertBtn, {
     if (length(inserted_ids) <5) {
-    #new_id <- paste("dat1_ctrl", input$insertBtn, sep = "_")  # based on counter hit
-    new_id_ii <- length(inserted_ids)+1
-    new_id <- paste("dat1_ctrl", new_id_ii , sep = "_")
-    insertUI(
-      selector = "#placeholder",
-      where = "beforeBegin",
-      ## wrap element in a div with id for ease of removal
-      ui = tags$div(
-        datselect_mod_ui(new_id,as.character(new_id_ii)), 
-        id = new_id
+      #new_id <- paste("dat1_ctrl", input$insertBtn, sep = "_")  # based on counter hit
+      new_id_ii <- length(inserted_ids)+1
+      new_id <- paste("dat1_ctrl", new_id_ii , sep = "_")
+      insertUI(
+        selector = "#placeholder",
+        where = "beforeBegin",
+        ## wrap element in a div with id for ease of removal
+        ui = tags$div(
+          datselect_mod_ui(new_id,as.character(new_id_ii)), 
+          id = new_id
+        )
       )
-    )
-    handler_list <- isolate(ui_handler())
-    new_handler <- datselect_mod_server(new_id)
-    handler_list <- c(handler_list, new_handler)
-    names(handler_list)[length(handler_list)] <- new_id
-    ui_handler(handler_list)
-    inserted_ids <<- c(inserted_ids, new_id)
-    print(handler_list)
+      handler_list <- isolate(ui_handler())
+      new_handler <- datselect_mod_server(new_id)
+      
+      handler_list[[new_id]] <- function() {
+        list(
+          return_value = new_handler$return_value(),
+          legend_choices = new_handler$filtered_data()$legend_choices
+        )
+      }
+      
+      # handler_list <- c(handler_list, new_handler)
+      # names(handler_list)[length(handler_list)] <- new_id
+      ui_handler(handler_list$return_value)
+      inserted_ids <<- c(inserted_ids, new_id)
+      print("Handler_list:")
+      print(handler_list)
     } else {
-    shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
+      shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
     }
   })
   
