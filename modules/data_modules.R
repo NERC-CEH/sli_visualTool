@@ -206,7 +206,8 @@ datselect_mod_server <-  function(id) {
       legend_choices <- NULL
       
       if (length(type) == 0){
-        data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # Hack to return some valid data while it waits for user input
+        #data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # not needed,  slow<< Hack to return some valid data while it waits for user input
+              
       } else {
         if(type=='EA pollution inventory 2021') {
           data_process_EA_pollution(IndustrySector = input$IndustrySector)[[1]] 

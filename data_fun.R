@@ -41,33 +41,44 @@ osg_parse2 <- function(grid_refs) {
 }
 
 
-data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx', IndustrySector = 'Agriculture', substance = "all") {
+data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance = "all") {
+# TODO: could add different years
   
-  # Read in the data
-  fp <- file_path 
-  data <- read_excel(fp, skip = 9, col_names = TRUE)
+  # file_path = 'datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx'
+  # # Read in the data
+  # fp <- file_path 
+  # data <- read_excel(fp, skip = 9, col_names = TRUE)
+  # 
+  # # Filter out rows with NA in Easting or Northing columns
+  # data <- data[complete.cases(data$EASTING, data$NORTHING), ]
+  # 
+  # # Define the UK National Grid projection
+  # uk_proj <- "+init=epsg:27700"  # EPSG code for UK National Grid
+  # 
+  # # Create an sf object using the filtered Easting and Northing coordinates
+  # sf_data <- st_as_sf(data, coords = c("EASTING", "NORTHING"), crs = uk_proj)
+  # 
+  # # Transform UK National Grid coordinates to latitude and longitude
+  # sf_data <- st_transform(sf_data, crs = 4326)  # EPSG code for WGS84 (latitude and longitude)
+  # 
+  # # Extract latitude and longitude directly from sf_data
+  # data$Latitude <- st_coordinates(sf_data)[, 2]
+  # data$Longitude <- st_coordinates(sf_data)[, 1]
+  # 
+  # # rename column
+  # names(data)[names(data) == "QUANTITY RELEASED (kg)"] <- "quantity_released_kg"
+  # names(data)[names(data) == "SUBSTANCE NAME"] <- "substance_name"
+  # names(data)[names(data) == "REGULATED INDUSTRY SECTOR"] <- "Regulated_Industry_Sector"
+  # 
+  # # save all files to parquet
+  # write_parquet(data , "datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
+  # 
+  ### END preprocessing block
   
-  # Filter out rows with NA in Easting or Northing columns
-  data <- data[complete.cases(data$EASTING, data$NORTHING), ]
+  #read_parquet_metadata("datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
   
-  # Define the UK National Grid projection
-  uk_proj <- "+init=epsg:27700"  # EPSG code for UK National Grid
-  
-  # Create an sf object using the filtered Easting and Northing coordinates
-  sf_data <- st_as_sf(data, coords = c("EASTING", "NORTHING"), crs = uk_proj)
-  
-  # Transform UK National Grid coordinates to latitude and longitude
-  sf_data <- st_transform(sf_data, crs = 4326)  # EPSG code for WGS84 (latitude and longitude)
-  
-  # Extract latitude and longitude directly from sf_data
-  data$Latitude <- st_coordinates(sf_data)[, 2]
-  data$Longitude <- st_coordinates(sf_data)[, 1]
-  
-  # rename column
-  names(data)[names(data) == "QUANTITY RELEASED (kg)"] <- "quantity_released_kg"
-  names(data)[names(data) == "SUBSTANCE NAME"] <- "substance_name"
-  names(data)[names(data) == "REGULATED INDUSTRY SECTOR"] <- "Regulated_Industry_Sector"
-  
+  data <- read_parquet("datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
+    
   
   # get unique substance and industry names
   unique_substance_names <- sort(unique(data$substance_name))

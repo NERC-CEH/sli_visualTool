@@ -23,6 +23,7 @@ library(RColorBrewer)
 library(tidyr)
 library(esquisse) # for  palettePicker
 library(leaflegend)
+library(nanoparquet)
 
 source('data_fun.R')
 source('map_fun.R')
@@ -40,16 +41,16 @@ link_posit <- tags$a(shiny::icon("book"), "Documentation", href = "https://githu
 link_guide <- tags$a(shiny::icon("book"), "User guide", href =  "Visual tool manual.pdf", target = "_blank")
 
 
-# import LCM
+##import LCM
 gb_lcm_1km_dom_tar <- raster("./datasets/LCM/gb2021lcm1km_dominant_target.tif")
 gb_lcm_1km_dom_tar[gb_lcm_1km_dom_tar == 0] <- NA
 gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target = gb_lcm_1km_dom_tar$gb2021lcm1km_dominant_target %>% as.factor()
 factpal <- colorFactor(color_data$RGB, values(gb_lcm_1km_dom_tar), na.color = 'transparent')
 
 # NUTS processing is slow
-CompoundName <-  "Phenanthrene"
-NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
-NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
+# CompoundName <-  "Phenanthrene"
+# NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
+# NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
 
 watermarkcss <- "
 #watermark
@@ -239,7 +240,7 @@ ui <- page_fillable(
     #               )
     #             )
     #           )),
-    nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900), p(),p(),p(),hr()),
+    # nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900), p(),p(),p(),hr()),
     nav_panel(title = "Data Catalogue", DTOutput('catalogueDT'),p(),p(),p(),hr()), 
     #nav_panel(title = "Chemical History Timeline", p('Coming soon.')),
     nav_panel(title = "Accessibility Statement", tags$iframe(src='accessibility_statement.html', width='100%', height=1500), p(),p(),p(),hr()),
@@ -440,109 +441,109 @@ server <- function(input, output, session) {
     })
   })
   
-  ############## Observers handling time series Data tab ####################
-  
-  ui_handler_TS <- reactiveVal(list()) #stores the reactive UI 
-  df_handler_TS <- reactiveVal(list()) #store the reactive dataframes as list
-  inserted_ids_TS <- c()  #list of dynamic UI ids
-  
-  # storage of point datasets
-  reactive_df_TS <- reactiveValues(data = NULL)
-  
-  # observer to insert UI for another dataset (point data on map)
-  observeEvent(input$insertBtn_TS, {
-    if (length(inserted_ids_TS) <5) {
-      #new_id <- paste("datTS_ctrl", input$insertBtn, sep = "_")  # based on counter hit
-      new_id_ii <- length(inserted_ids_TS)+1
-      new_id <- paste("datTS_ctrl", new_id_ii , sep = "_")
-      
-      ## insert accordion UI
-      insertUI(
-        selector = "#placeholder-ts",
-        where = "beforeBegin",
-        ## wrap element in a div with id for ease of removal
-        ui = tags$div(
-          datselect_mod_ui(new_id,as.character(new_id_ii)), 
-          id = new_id
-        )
-      )
-      
-      ## insert table UI
-      insertUI(
-        selector = "#placeholder-table-ts",
-        where = "beforeBegin",
-        ## wrap element in a div with id for ease of removal
-        ui = tags$div(
-          DT_mod_ui(paste0(new_id,'_table'),as.character(new_id_ii)), 
-          id = paste0(new_id,'_table')
-        )
-      )
-      
-      ## storing the added UI and data
-      
-      handler_list <- isolate(ui_handler_TS())
-      new_handler <- datselect_mod_server(new_id)
-      handler_list <- c(handler_list, new_handler['return_value'])
-      names(handler_list)[length(handler_list)] <- new_id
-      ui_handler_TS(handler_list)  # important: update the reactive list
-      inserted_ids_TS <<- c(inserted_ids_TS, new_id)
-      print(handler_list)
-      
-      ## Append data
-      # reactive_df[[paste0('data_', new_id_ii)]] <- new_handler[['filtered_data']]
-      # print(isolate(reactive_df[[paste0('data_', new_id_ii)]]))
-      df_list <- isolate(df_handler_TS())
-      df_list <- c(df_list, new_handler['filtered_data'])
-      names(df_list)[length(df_list)] <- new_id
-      df_handler_TS(df_list)
-      
-      print(df_handler_TS())
-      
-      DT_mod_server(paste0(new_id,'_table-ts'), df_handler_TS()[[new_id]])
-      
-    } else {
-      shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
-    }
-  })
-  
-  # observer to remove UI
-  observeEvent(input$removeBtn_TS, {
-    print(inserted_ids_TS)
-    removeUI(
-      ## pass in appropriate div id, for data selector
-      selector = paste0('#', inserted_ids_TS[length(inserted_ids_TS)])
-    )
-    removeUI( 
-      ## pass in appropriate div id, for data table
-      selector = paste0('#',inserted_ids_TS[length(inserted_ids_TS)], '_table')
-    )
-    # remove associated datasets
-    reactive_df_TS[[inserted_ids_TS[length(inserted_ids_TS)]]] <- NULL
-    
-    # remove the id from list
-    inserted_ids_TS <<- inserted_ids_TS[-length(inserted_ids_TS)]
-    
-    
-  })
-  
-  
-  output$out_ts <- renderPrint({
-    lapply(ui_handler_TS(), function(handle) {
-      handle()
-    })
-    #print('blah blah blah')
-  })
-  output$out2_ts <- renderPrint({
-    lapply(df_handler_TS(), function(handle) {
-      handle()
-    })
-  })
-  
-  ####################### end ########################
+  # ############## Observers handling time series Data tab ####################
+  # 
+  # ui_handler_TS <- reactiveVal(list()) #stores the reactive UI 
+  # df_handler_TS <- reactiveVal(list()) #store the reactive dataframes as list
+  # inserted_ids_TS <- c()  #list of dynamic UI ids
+  # 
+  # # storage of point datasets
+  # reactive_df_TS <- reactiveValues(data = NULL)
+  # 
+  # # observer to insert UI for another dataset (point data on map)
+  # observeEvent(input$insertBtn_TS, {
+  #   if (length(inserted_ids_TS) <5) {
+  #     #new_id <- paste("datTS_ctrl", input$insertBtn, sep = "_")  # based on counter hit
+  #     new_id_ii <- length(inserted_ids_TS)+1
+  #     new_id <- paste("datTS_ctrl", new_id_ii , sep = "_")
+  #     
+  #     ## insert accordion UI
+  #     insertUI(
+  #       selector = "#placeholder-ts",
+  #       where = "beforeBegin",
+  #       ## wrap element in a div with id for ease of removal
+  #       ui = tags$div(
+  #         datselect_mod_ui(new_id,as.character(new_id_ii)), 
+  #         id = new_id
+  #       )
+  #     )
+  #     
+  #     ## insert table UI
+  #     insertUI(
+  #       selector = "#placeholder-table-ts",
+  #       where = "beforeBegin",
+  #       ## wrap element in a div with id for ease of removal
+  #       ui = tags$div(
+  #         DT_mod_ui(paste0(new_id,'_table'),as.character(new_id_ii)), 
+  #         id = paste0(new_id,'_table')
+  #       )
+  #     )
+  #     
+  #     ## storing the added UI and data
+  #     
+  #     handler_list <- isolate(ui_handler_TS())
+  #     new_handler <- datselect_mod_server(new_id)
+  #     handler_list <- c(handler_list, new_handler['return_value'])
+  #     names(handler_list)[length(handler_list)] <- new_id
+  #     ui_handler_TS(handler_list)  # important: update the reactive list
+  #     inserted_ids_TS <<- c(inserted_ids_TS, new_id)
+  #     print(handler_list)
+  #     
+  #     ## Append data
+  #     # reactive_df[[paste0('data_', new_id_ii)]] <- new_handler[['filtered_data']]
+  #     # print(isolate(reactive_df[[paste0('data_', new_id_ii)]]))
+  #     df_list <- isolate(df_handler_TS())
+  #     df_list <- c(df_list, new_handler['filtered_data'])
+  #     names(df_list)[length(df_list)] <- new_id
+  #     df_handler_TS(df_list)
+  #     
+  #     print(df_handler_TS())
+  #     
+  #     DT_mod_server(paste0(new_id,'_table-ts'), df_handler_TS()[[new_id]])
+  #     
+  #   } else {
+  #     shiny::showNotification('Maximum number of datasets allowed is 5.',type = 'warning')
+  #   }
+  # })
+  # 
+  # # observer to remove UI
+  # observeEvent(input$removeBtn_TS, {
+  #   print(inserted_ids_TS)
+  #   removeUI(
+  #     ## pass in appropriate div id, for data selector
+  #     selector = paste0('#', inserted_ids_TS[length(inserted_ids_TS)])
+  #   )
+  #   removeUI( 
+  #     ## pass in appropriate div id, for data table
+  #     selector = paste0('#',inserted_ids_TS[length(inserted_ids_TS)], '_table')
+  #   )
+  #   # remove associated datasets
+  #   reactive_df_TS[[inserted_ids_TS[length(inserted_ids_TS)]]] <- NULL
+  #   
+  #   # remove the id from list
+  #   inserted_ids_TS <<- inserted_ids_TS[-length(inserted_ids_TS)]
+  #   
+  #   
+  # })
+  # 
+  # 
+  # output$out_ts <- renderPrint({
+  #   lapply(ui_handler_TS(), function(handle) {
+  #     handle()
+  #   })
+  #   #print('blah blah blah')
+  # })
+  # output$out2_ts <- renderPrint({
+  #   lapply(df_handler_TS(), function(handle) {
+  #     handle()
+  #   })
+  # })
+  # 
+  # ####################### end ########################
   
   ### leaflet map for point data #####
   map = leaflet() %>% 
-    addTiles(group = "OpenStreetMap") %>% 
+    addTiles(group = "OpenStreetMap") %>%
     addProviderTiles(providers$Esri.WorldImagery,                  # try Esri. and see what other options are available.
                      group = "ESRI World Imagery",
                      options = providerTileOptions(noWrap = TRUE) # (noWrap = TRUE) avoids having multiple world maps
@@ -565,7 +566,7 @@ server <- function(input, output, session) {
     ) %>%
     addProviderTiles("NASAGIBS.ViirsEarthAtNight2012",
                      group = "NASA Earth at Night 2012",
-                     options = providerTileOptions(noWrap = TRUE)) %>% 
+                     options = providerTileOptions(noWrap = TRUE)) %>%
     addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
                    group = "LCM 2021 1km dominant target"
     ) %>%
@@ -573,28 +574,28 @@ server <- function(input, output, session) {
                 layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
                 options = WMSTileOptions(crs=27700,opacity=0.5),
                 group = 'IHU') %>%
-    addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery", 
+    addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery",
                                     "CartoDB.Positron","Esri.NatGeoWorldMap",
                                     "OpenTopoMap","Stadia.StamenToner"
                                     #,"GeoportailFrance.orthos"
-    ), 
+    ),
     overlayGroups = c("IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"),
-    position = 'topleft') %>% 
+    position = 'topleft') %>%
     addLegend(
       position = "bottomright",
       colors = rgb(t(col2rgb(color_data$RGB)) / 255),
       labels = color_data$Class, opacity = 1,
       title = "LCM classes",
       group = "LCM 2021 1km dominant target"
-    ) %>% 
+    ) %>%
     hideGroup(c("LCM 2021 1km dominant target", "IHU", "NASA Earth at Night 2012")) %>%
     setView(-3.0, 55.5, zoom = 6) 
   
-  output$myMap = renderLeaflet(map)
+  output$myMap = renderLeaflet({map})
   
   observeEvent(input$updateBtn, {
     print('press update button')
-    showNotification("Map updating...", type = "warning",duration = 1.5)
+    showNotification("Map updating...", type = "warning",duration = 5.0)
     
    
     
@@ -907,68 +908,71 @@ server <- function(input, output, session) {
                                         #"GeoportailFrance.orthos"
                                         ), 
                              overlayGroups = c(paste0(1:length(inserted_ids), '. ',handler_list[1:length(inserted_ids)]),
-                                               "IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"),
+                                               "IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"
+                                               ),
                              position = 'topleft') 
      
   })  
   
-  ###### indicator map #######
-  ## regional averages ##
-  regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
-    addPolygons(
-      data = NUTS_region_with_gcms_data,
-      fillColor = ~colorQuantile("viridis", mean_concentration)(mean_concentration),
-      fillOpacity = 0.6,
-      weight = 1,
-      color = "white",
-      popup = ~paste("Compound: ", CompoundName, "<br>",
-                     "Mean Concentration: ", round(mean_concentration, 2), "<br>",
-                     "NUTS ID: ", NUTS_ID),
-      group = "NUTS Level 1"
-    ) %>%
-    
-    addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
-                   group = "LCM 2021 1km dominant target"
-    ) %>%
-    addProviderTiles(providers$Stadia.StamenTonerLite,
-                     options = providerTileOptions(noWrap = TRUE)
-    ) %>%
-    # addWMSTiles('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetCapabilities&service=WMS',
-    #             layers='12',
-    #             options = WMSTileOptions(crs=27700,opacity=0.5),
-    #             group = 'Scottish coastal areas') %>%  # have some trouble displaying, naming issues.
-    # addWMSLegend('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetLegendGraphic%26version=1.3.0%26format=image/png%26layer=12') %>%
-    addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
-                layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
-                options = WMSTileOptions(crs=27700,opacity=0.5),
-                group = 'IHU') %>%
-    # addWMSTiles('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?request=getCapabilities&service=WMS&cache=false&',
-    #             layers=c('LC.25m.GB', 'LC.25m.NI'),
-    #             options = WMSTileOptions(crs=27700,opacity=0.5),
-    #             group = 'Land cover map 2018 25m') %>%
-    #  leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>%
-    addLegend(
-      position = "bottomright",
-      colors = rgb(t(col2rgb(color_data$RGB)) / 255),
-      labels = color_data$Class, opacity = 1,
-      title = "LCM classes",
-      group = "LCM 2021 1km dominant target"
-    ) %>%
-    addLayersControl(
-      overlayGroups = c("NUTS Level 1", "LCM 2021 1km dominant target", "IHU"),
-      #overlayGroups = c("base" ),
-      options = layersControlOptions(collapsed = FALSE)
-    ) %>%
-    hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>%
-    addControl(rr, position = "bottomleft")
-  
+  # ###### indicator map (Feb 2026: works but not being used, slow) #######
+  # ## regional averages ##
+  # regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
+  #   addPolygons(
+  #     data = NUTS_region_with_gcms_data,
+  #     fillColor = ~colorQuantile("viridis", mean_concentration)(mean_concentration),
+  #     fillOpacity = 0.6,
+  #     weight = 1,
+  #     color = "white",
+  #     popup = ~paste("Compound: ", CompoundName, "<br>",
+  #                    "Mean Concentration: ", round(mean_concentration, 2), "<br>",
+  #                    "NUTS ID: ", NUTS_ID),
+  #     group = "NUTS Level 1"
+  #   ) %>%
+  #   
+  #   addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
+  #                  group = "LCM 2021 1km dominant target"
+  #   ) %>%
+  #   addProviderTiles(providers$Stadia.StamenTonerLite,
+  #                    options = providerTileOptions(noWrap = TRUE)
+  #   ) %>%
+  #   # addWMSTiles('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetCapabilities&service=WMS',
+  #   #             layers='12',
+  #   #             options = WMSTileOptions(crs=27700,opacity=0.5),
+  #   #             group = 'Scottish coastal areas') %>%  # have some trouble displaying, naming issues.
+  #   # addWMSLegend('https://map.sepa.org.uk/server/services/Open/Hydrography/MapServer/WMSServer?request=GetLegendGraphic%26version=1.3.0%26format=image/png%26layer=12') %>%
+  #   addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
+  #               layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
+  #               options = WMSTileOptions(crs=27700,opacity=0.5),
+  #               group = 'IHU') %>%
+  #   # addWMSTiles('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?request=getCapabilities&service=WMS&cache=false&',
+  #   #             layers=c('LC.25m.GB', 'LC.25m.NI'),
+  #   #             options = WMSTileOptions(crs=27700,opacity=0.5),
+  #   #             group = 'Land cover map 2018 25m') %>%
+  #   #  leaflet.extras::addWMSLegend('https://catalogue.ceh.ac.uk/maps/032da3fa-10ba-42cc-b719-b19b6dfd11f5?language=eng&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=WMS&format=image/png&STYLE=inspire_common:DEFAULT') %>%
+  #   addLegend(
+  #     position = "bottomright",
+  #     colors = rgb(t(col2rgb(color_data$RGB)) / 255),
+  #     labels = color_data$Class, opacity = 1,
+  #     title = "LCM classes",
+  #     group = "LCM 2021 1km dominant target"
+  #   ) %>%
+  #   addLayersControl(
+  #     overlayGroups = c("NUTS Level 1", "LCM 2021 1km dominant target", "IHU"),
+  #     #overlayGroups = c("base" ),
+  #     options = layersControlOptions(collapsed = FALSE)
+  #   ) %>%
+  #   hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>%
+  #   addControl(rr, position = "bottomleft")
   # 
   # 
-  # ######################### indicator map by nation##  SLOW #########
-  uk_country <- read_sf("datasets/infuse_ctry_2011")
-  uk_country <- st_transform(uk_country , 4326)
-  uk_country <- rmapshaper::ms_simplify(uk_country) # maybe save this to be faster
-
+  # 
+  # ######################### indicator map by nation##  SLOW (15 seconds) #########
+  # uk_country <- read_sf("datasets/infuse_ctry_2011")
+  # uk_country <- st_transform(uk_country , 4326)
+  # uk_country <- rmapshaper::ms_simplify(uk_country) # maybe save this to be faster
+  # st_write(uk_country, file.path('datasets','infuse_ctry_2011','infuse_ctry_2011_small.shp'))
+  # 
+  uk_country <- read_sf("datasets/infuse_ctry_2011/infuse_ctry_2011_small.shp")
   uk_country$colour <- c('#d7a12f','#9EC979','red','red')
   uk_country$`Terrestrial` <- c(0.62,0.5,0.73,0.7)
   uk_country$`Freshwater` <- c(0.8,0.5,0.83,0.77)
@@ -1044,6 +1048,8 @@ server <- function(input, output, session) {
   
   
 }
+
+# profvis::profvis(runApp('app.R’))
 
 # options(shiny.sanitize.errors = FALSE)
 options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
