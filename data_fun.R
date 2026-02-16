@@ -189,9 +189,9 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
   fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
   
-  data_lcms <- read.csv(fp_lcms)
+  data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
   
-  data_gcms <- read.csv(fp_gcms)
+  data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
   
   data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
   
@@ -209,11 +209,11 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   # Calculate the minimum and maximum values
   min_value <- min(filtered_data_gcms$Concentration)
   max_value <- max(filtered_data_gcms$Concentration)
-  
+
   # Create logarithmic bins for normalized quantity values
   filtered_data_gcms <- filtered_data_gcms %>%
     mutate(log_Concentration = log(Concentration + 1))
-  
+
   # # Normalize 'quantity_released_kg' to range [0, 1]
   # filtered_data_gcms <- filtered_data_gcms %>%
   #   mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))

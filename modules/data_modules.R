@@ -241,8 +241,9 @@ datselect_mod_server <-  function(id) {
           csv_upload_mod_server(id)         
          
         } else {
-          data_process_EA_WQ_gcms(CompoundName = input$gcms_compound) %>% 
-            filter(year >= input$year_slider[1], year <= input$year_slider[2])
+          data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
+                                  start_year = input$year_slider[1],
+                                  end_year = input$year_slider[2])  
         }
       }
     })
