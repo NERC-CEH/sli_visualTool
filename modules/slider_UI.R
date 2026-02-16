@@ -56,12 +56,25 @@ ea_gcms_sliders <- function(id) {
                 ),
     tableOutput(NS(id,"chem_info")),
     # code("code displays your text similar to computer code"),
+    
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
                 min = min(2013), max = max(2024),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
-    )
-                
+    ) #,
+    
+    # currently stuck within module >> needs exposing and pass to map to switch_map()
+    # input_switch((NS(id,'PnecRiskmap')), 
+    #              label = tooltip(
+    #                trigger = list(
+    #                  "'Show PNEC risk quotient (RQ) instead of concentration.'",
+    #                  bs_icon("info-circle")
+    #                ),
+    #                "PNEC is predicted no-effect concentration. RQ is concentration divided by PNEC."
+    #              ),
+    #              value = TRUE
+    #               
+    # )
   )
 }
 

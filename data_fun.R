@@ -174,7 +174,7 @@ data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance 
 }
 
 
-
+# some speed issue
 data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv',
                                     CompoundName = "Phenanthrene",
                                     start_year = "2019",
@@ -182,9 +182,10 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   
   eqs_list <- read.csv('datasets/EA_water_quality_GCMS_LCMS/EQS_list.txt', skip=1, sep = '\n', col.names = 'determinant')
   
-  fp_ref_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS EA NLS Target Database 2023-07-06.csv'
+  ref_gcms<- data_process_chemref()
   
-  # TODO: join it with NORMAN PNEC (see Spurgeon 2022): https://www.norman-network.com/nds/ecotox/lowestPnecsIndex.php
+  ref_gcms = ref_gcms %>% filter(Compound_Name == CompoundName) %>% 
+    dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`)
   
   fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
   fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
@@ -212,8 +213,19 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
 
   # Create logarithmic bins for normalized quantity values
   filtered_data_gcms <- filtered_data_gcms %>%
-    mutate(log_Concentration = log(Concentration + 1))
-
+    mutate(log_Concentration = log(Concentration + 1),
+           PNEC_RQ = ifelse(Concentration < ref_gcms$LOD , 0, Concentration /ref_gcms $`Lowest PNEC Freshwater [µg//l]`) ) %>%  # WARNING: below LOD >> = 0)
+    mutate( 
+      RQ_label = case_when(
+        PNEC_RQ == 0.0 ~ "below LOD",
+        PNEC_RQ != 0.0 & PNEC_RQ < 1.0 ~ "RQ < 1",
+        between(PNEC_RQ, 1.0, 10) ~ "RQ (1,10)",
+        between(PNEC_RQ, 10, 100) ~ "RQ (10,100)",
+        between(PNEC_RQ, 100, 1000) ~ "RQ (100,1000)",
+        PNEC_RQ >1000 ~ "RQ > 1000",
+        .default = NA
+      )
+    )
   # # Normalize 'quantity_released_kg' to range [0, 1]
   # filtered_data_gcms <- filtered_data_gcms %>%
   #   mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))

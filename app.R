@@ -102,44 +102,45 @@ ui <- page_fillable(
                                       div(id="placeholder"),
                                       multiple = TRUE, open=TRUE
                                     ),
-                                    actionButton("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
-                                    actionButton("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
-                                    actionButton("updateBtn", "Update map", class = "btn-success",width = '100%')
+                                    input_task_button("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
+                                    input_task_button("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
+                                    input_task_button("updateBtn", "Update map", class = "btn-success",width = '100%')   # tentative: testing 16/2/2026, input_task_button vs actionButton
                   ),
                   navset_card_underline(
                     # title = "Visualizations",
                     nav_spacer(),
                     
                     nav_panel("Map",
+                              ### EXTRA button controls
                               # https://rstudio.github.io/bslib/articles/tooltips-popovers/index.html
-                              popover(
-                                bs_icon("gear"),
-                                p('Coming soon!'),
-                                title = "Map controls", class = 'rightAlign',
-                                palettePicker(
-                                  inputId = "pal2", 
-                                  label = "With a list of palette:", 
-                                  choices = list(
-                                    "Viridis" = list(
-                                      "viridis" = viridis_pal(option = "viridis")(10),
-                                      "magma" = viridis_pal(option = "magma")(10),
-                                      "inferno" = viridis_pal(option = "inferno")(10),
-                                      "plasma" = viridis_pal(option = "plasma")(10),
-                                      "cividis" = viridis_pal(option = "cividis")(10)
-                                    ),
-                                    "Brewer" = list(
-                                      "Blues" = brewer_pal(palette = "Blues")(8),
-                                      "Reds" = brewer_pal(palette = "Reds")(8),
-                                      "Paired" = brewer_pal(palette = "Paired")(8),
-                                      "Set1" = brewer_pal(palette = "Set1")(8)
-                                    )
-                                  ), 
-                                  textColor = c(
-                                    rep("white", 5), rep("black", 4) 
-                                  )
-                                )
-                              ),
-                              leafletOutput('myMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9") #,
+                              # popover(
+                              #   bs_icon("gear"),
+                              #   p('Coming soon!'),
+                              #   title = "Map controls", class = 'rightAlign',
+                              #   palettePicker(
+                              #     inputId = "pal2", 
+                              #     label = "With a list of palette:", 
+                              #     choices = list(
+                              #       "Viridis" = list(
+                              #         "viridis" = viridis_pal(option = "viridis")(10),
+                              #         "magma" = viridis_pal(option = "magma")(10),
+                              #         "inferno" = viridis_pal(option = "inferno")(10),
+                              #         "plasma" = viridis_pal(option = "plasma")(10),
+                              #         "cividis" = viridis_pal(option = "cividis")(10)
+                              #       ),
+                              #       "Brewer" = list(
+                              #         "Blues" = brewer_pal(palette = "Blues")(8),
+                              #         "Reds" = brewer_pal(palette = "Reds")(8),
+                              #         "Paired" = brewer_pal(palette = "Paired")(8),
+                              #         "Set1" = brewer_pal(palette = "Set1")(8)
+                              #       )
+                              #     ), 
+                              #     textColor = c(
+                              #       rep("white", 5), rep("black", 4) 
+                              #     )
+                              #   )
+                              # ),
+                              leafletOutput('myMap',height = 800) %>% withSpinner(type=5,color = "#A9A9A9") #,
                               # accordion(
                               #   accordion_panel(
                               #     "Map controls",
@@ -713,6 +714,8 @@ server <- function(input, output, session) {
                legend_title=legend_title,
                # legend_title = new_handler['legend_choices'],
                showHeatmap = input$heatmap, 
+               # showPnecRiskmap= input$PnecRiskmap, 
+               
                palette_name =  single_color_sequential_palettes[new_id_ii])
           
           #### start add dataset: it works but deprecating, replaced by switch_map

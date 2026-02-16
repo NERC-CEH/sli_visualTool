@@ -13,7 +13,7 @@ library(scales)
 #' 
 
 # note: if changing any of the dat choices, make sure you change them elsewhere too (app.R map switch, and output$ui_placeholder below)
-dat_choices_pt <- c("EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
+dat_choices_pt <- c("EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", "Custom file upload (.csv)")
@@ -125,6 +125,8 @@ datselect_mod_server <-  function(id) {
       print(type)
       if (type == "EA pollution inventory 2021") {
         ea_pollution_sliders(id)
+      } else if (type == "EA water quality GCMS/LCMS data (RISK)") {
+        ea_gcms_sliders(id)
       } else if (type == "EA water quality GCMS/LCMS data") {
         ea_gcms_sliders(id)
       } else if (type == "Predatory Bird Monitoring Scheme") {
@@ -240,6 +242,11 @@ datselect_mod_server <-  function(id) {
         } else if (type == " Custom file upload (.csv)") {
           csv_upload_mod_server(id)         
          
+        } else if (type == "EA water quality GCMS/LCMS data (RISK)") {
+          data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
+                                  start_year = input$year_slider[1],
+                                  end_year = input$year_slider[2])          
+          
         } else {
           data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
                                   start_year = input$year_slider[1],
