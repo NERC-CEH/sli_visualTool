@@ -457,8 +457,8 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
       ) %>% 
       addLegend(
         position = "bottomright",
-        colors = OkabeItoPal,
-        labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000")
+        colors = OkabeItoPal  %>% rev(),
+        labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev()
         
       )
     
