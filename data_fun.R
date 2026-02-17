@@ -41,33 +41,44 @@ osg_parse2 <- function(grid_refs) {
 }
 
 
-data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx', IndustrySector = 'Agriculture', substance = "all") {
+data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance = "all") {
+# TODO: could add different years
   
-  # Read in the data
-  fp <- file_path 
-  data <- read_excel(fp, skip = 9, col_names = TRUE)
+  # file_path = 'datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.xlsx'
+  # # Read in the data
+  # fp <- file_path 
+  # data <- read_excel(fp, skip = 9, col_names = TRUE)
+  # 
+  # # Filter out rows with NA in Easting or Northing columns
+  # data <- data[complete.cases(data$EASTING, data$NORTHING), ]
+  # 
+  # # Define the UK National Grid projection
+  # uk_proj <- "+init=epsg:27700"  # EPSG code for UK National Grid
+  # 
+  # # Create an sf object using the filtered Easting and Northing coordinates
+  # sf_data <- st_as_sf(data, coords = c("EASTING", "NORTHING"), crs = uk_proj)
+  # 
+  # # Transform UK National Grid coordinates to latitude and longitude
+  # sf_data <- st_transform(sf_data, crs = 4326)  # EPSG code for WGS84 (latitude and longitude)
+  # 
+  # # Extract latitude and longitude directly from sf_data
+  # data$Latitude <- st_coordinates(sf_data)[, 2]
+  # data$Longitude <- st_coordinates(sf_data)[, 1]
+  # 
+  # # rename column
+  # names(data)[names(data) == "QUANTITY RELEASED (kg)"] <- "quantity_released_kg"
+  # names(data)[names(data) == "SUBSTANCE NAME"] <- "substance_name"
+  # names(data)[names(data) == "REGULATED INDUSTRY SECTOR"] <- "Regulated_Industry_Sector"
+  # 
+  # # save all files to parquet
+  # write_parquet(data , "datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
+  # 
+  ### END preprocessing block
   
-  # Filter out rows with NA in Easting or Northing columns
-  data <- data[complete.cases(data$EASTING, data$NORTHING), ]
+  #read_parquet_metadata("datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
   
-  # Define the UK National Grid projection
-  uk_proj <- "+init=epsg:27700"  # EPSG code for UK National Grid
-  
-  # Create an sf object using the filtered Easting and Northing coordinates
-  sf_data <- st_as_sf(data, coords = c("EASTING", "NORTHING"), crs = uk_proj)
-  
-  # Transform UK National Grid coordinates to latitude and longitude
-  sf_data <- st_transform(sf_data, crs = 4326)  # EPSG code for WGS84 (latitude and longitude)
-  
-  # Extract latitude and longitude directly from sf_data
-  data$Latitude <- st_coordinates(sf_data)[, 2]
-  data$Longitude <- st_coordinates(sf_data)[, 1]
-  
-  # rename column
-  names(data)[names(data) == "QUANTITY RELEASED (kg)"] <- "quantity_released_kg"
-  names(data)[names(data) == "SUBSTANCE NAME"] <- "substance_name"
-  names(data)[names(data) == "REGULATED INDUSTRY SECTOR"] <- "Regulated_Industry_Sector"
-  
+  data <- read_parquet("datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
+    
   
   # get unique substance and industry names
   unique_substance_names <- sort(unique(data$substance_name))
@@ -163,7 +174,7 @@ data_process_EA_pollution <- function(file_path = 'datasets/EA_pollution_invento
 }
 
 
-
+# some speed issue
 data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv',
                                     CompoundName = "Phenanthrene",
                                     start_year = "2019",
@@ -171,16 +182,17 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   
   eqs_list <- read.csv('datasets/EA_water_quality_GCMS_LCMS/EQS_list.txt', skip=1, sep = '\n', col.names = 'determinant')
   
-  fp_ref_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS EA NLS Target Database 2023-07-06.csv'
+  ref_gcms<- data_process_chemref()
   
-  # TODO: join it with NORMAN PNEC (see Spurgeon 2022): https://www.norman-network.com/nds/ecotox/lowestPnecsIndex.php
+  ref_gcms = ref_gcms %>% filter(Compound_Name == CompoundName) %>% 
+    dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`)
   
   fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
   fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
   
-  data_lcms <- read.csv(fp_lcms)
+  data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
   
-  data_gcms <- read.csv(fp_gcms)
+  data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
   
   data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
   
@@ -198,11 +210,22 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   # Calculate the minimum and maximum values
   min_value <- min(filtered_data_gcms$Concentration)
   max_value <- max(filtered_data_gcms$Concentration)
-  
+
   # Create logarithmic bins for normalized quantity values
   filtered_data_gcms <- filtered_data_gcms %>%
-    mutate(log_Concentration = log(Concentration + 1))
-  
+    mutate(log_Concentration = log(Concentration + 1),
+           PNEC_RQ = ifelse(Concentration < ref_gcms$LOD , 0, Concentration /ref_gcms $`Lowest PNEC Freshwater [µg//l]`) ) %>%  # WARNING: below LOD >> = 0)
+    mutate( 
+      RQ_label = case_when(
+        PNEC_RQ == 0.0 ~ "below LOD",
+        PNEC_RQ != 0.0 & PNEC_RQ < 1.0 ~ "RQ < 1",
+        between(PNEC_RQ, 1.0, 10) ~ "RQ (1,10)",
+        between(PNEC_RQ, 10, 100) ~ "RQ (10,100)",
+        between(PNEC_RQ, 100, 1000) ~ "RQ (100,1000)",
+        PNEC_RQ >1000 ~ "RQ > 1000",
+        .default = NA
+      )
+    )
   # # Normalize 'quantity_released_kg' to range [0, 1]
   # filtered_data_gcms <- filtered_data_gcms %>%
   #   mutate(Concentration_norm = (Concentration - min_value) / (max_value - min_value))

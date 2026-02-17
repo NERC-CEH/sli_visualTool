@@ -59,7 +59,8 @@ UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
       
       # Left Logo
       tags$a(href="JavaScript: location.reload(true);",
-             tags$img(src = "https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png", height = "50px")
+             #tags$img(src = "https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png", height = "50px")
+             tags$img(src = "UKCEH_Logo_Master_Black.png", height = "50px")
       )#
       ,
       

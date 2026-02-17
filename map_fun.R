@@ -1,5 +1,6 @@
 # functions for the leaflet map
 
+OkabeItoPal <- c('lightblue','#009E73','#F0E442','#E69F00','#D55E00','black')
 
 # Create a data frame for colour-blind friendly LCM colour palette with the RGB values and class names
 color_data_CB <- data.frame(
@@ -55,28 +56,32 @@ map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sec
 ## leaflet() %>% addTiles() %>% map_fun_EA_WQ_gcms(data=data)
 map_fun_EA_WQ_gcms <- function(map, data, fillColor = "blue",
                                legend_title= 'EA water quality GCMS data'){
-  map %>% 
-  #addControl(html = paste("<h5>", input$gcms_compound, " ", input$year_slider[1], " - ",  input$year_slider[2],  "</h5>", sep = ""), position = "topright") %>%
-    addCircleMarkers(
-      data = data, 
-      lng = ~Longitude, lat = ~Latitude, radius = 8,# ~radius,
-      #clusterOptions = markerClusterOptions(maxClusterRadius=1),
-      popup = ~paste(
-        "<b>Sample Site ID: </b>", Sample_Site_ID, "<br/>",
-        "<b>Compound Name: </b>", Compound_Name, "<br/>",
-        "<b>Concentration: </b>", Concentration, "<br/>",
-        "<b>Unit: </b>", unit, "<br/>",
-        "<b>Sample description: </b>", SMC_DESC, "<br/>",
-        "<b>Date: </b>", Sample_datetime, "<br/>",
-        "<b>Method: </b>", method, "<br/>",
-        sep = ""
-      ),
-      color = "black",   # Outline color
-      fillColor = fillColor, # Fill color
-      fillOpacity = 0.8, # Opacity of the fill color
-      weight = 0.5,
-      group = legend_title
+    poptext = ~paste(
+      "<b>Sample Site ID: </b>", Sample_Site_ID, "<br/>",
+      "<b>Compound Name: </b>", Compound_Name, "<br/>",
+      "<b>Concentration: </b>", Concentration, "<br/>",
+      "<b>Unit: </b>", unit, "<br/>",
+      "<b>PNEC Risk Quotient (RQ): </b>", PNEC_RQ, "<br/>",
+      "<b>Sample description: </b>", SMC_DESC, "<br/>",
+      "<b>Date: </b>", Sample_datetime, "<br/>",
+      "<b>Method: </b>", method, "<br/>",
+      sep = ""
     )
+  
+    map %>% 
+    #addControl(html = paste("<h5>", input$gcms_compound, " ", input$year_slider[1], " - ",  input$year_slider[2],  "</h5>", sep = ""), position = "topright") %>%
+      addCircleMarkers(
+        data = data, 
+        lng = ~Longitude, lat = ~Latitude, radius = 8,# ~radius,
+        #clusterOptions = markerClusterOptions(maxClusterRadius=1),
+        popup = poptext,
+        color = "black",   # Outline color
+        fillColor = fillColor, # Fill color
+        fillOpacity = 0.8, # Opacity of the fill color
+        weight = 0.5,
+        group = legend_title
+      )
+  
 }
 
 
@@ -363,7 +368,9 @@ map_fun_CSV <- function(map, data, long_col, lat_col, fillColor= "blue", legend_
   
 }
 
-switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE){
+# this is a good horizontal legend: https://stackoverflow.com/questions/60838128/how-to-make-a-leaflet-legend-horizontal
+
+switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE, showPnecRiskmap = FALSE){
   labFormat_transform <- labelFormat(
     transform = function(x)
       round(exp(x) - 1, 7)
@@ -383,6 +390,23 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         title = paste0(legend_title, "</br>", "No data available for this selection"),
         opacity = 1
       )
+    # } else if(showPnecRiskmap == TRUE) {   
+    #   
+    #   factpal <- colorFactor(OkabeItoPal, c("below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"), ordered=TRUE)
+    #   
+    #   m = m %>% 
+    #     map_fun_EA_WQ_gcms(
+    #       map_data,
+    #       fillColor =  ~ factpal(RQ_label),
+    #       legend_title = legend_title
+    #     ) %>% 
+    #     addLegend(
+    #       position = "bottomright",
+    #       colors = OkabeItoPal,
+    #       labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000")
+    #       
+    #     )
+    #   
     } else {
       fillColor = colorNumeric(palette = brewer.pal(9, palette_name),
                                domain = map_data$log_Concentration)
@@ -421,6 +445,22 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         )
       
     }
+    
+  } else if (input_choice == "EA water quality GCMS/LCMS data (RISK)") {
+    factpal <- colorFactor(OkabeItoPal, c("below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"), ordered=TRUE)
+    
+    m = m %>% 
+      map_fun_EA_WQ_gcms(
+        map_data,
+        fillColor =  ~ factpal(RQ_label),
+        legend_title = legend_title
+      ) %>% 
+      addLegend(
+        position = "bottomright",
+        colors = OkabeItoPal  %>% rev(),
+        labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev()
+        
+      )
     
   } else if (input_choice == 'EA pollution inventory 2021') {
     #m = m %>% map_fun_EA_pollution(map_data,fillColor = color_data$RGB[new_id_ii])

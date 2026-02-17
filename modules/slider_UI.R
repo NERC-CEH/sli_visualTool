@@ -1,5 +1,14 @@
-unique_industry_sector <- data_process_EA_pollution()[['unique_industry_sector']]
+
+# loaded at start up, be careful with performance, PFAS: 10ms, APIENS 2x10ms
+
+unique_industry_sector <- c("Agriculture","Biowaste Treatment","Cement and Minerals",
+                            "Chemicals","combustion","Combustion","EfW","Food & Drink",
+                            "Hazardous Waste","Landfill","Metals","Metals Recycling",
+                            "No Far Sector","Non-Hazardous & Inert","Nuclear",
+                            "Oil and Gas","Paper and textiles",
+                            "Refineries & Fuel","Water Industry") # data_process_EA_pollution()[['unique_industry_sector']]
 #unique_industry_sector <- c('Agriculture','Water Industry')
+
 pbms_biota_choices =  c('Buzzard','Sparrowhawk','Otter')
 unique_pfas_names <- data_process_pfas()[['unique_pfas_names']]
 
@@ -47,12 +56,25 @@ ea_gcms_sliders <- function(id) {
                 ),
     tableOutput(NS(id,"chem_info")),
     # code("code displays your text similar to computer code"),
+    
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
                 min = min(2013), max = max(2024),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
-    )
-                
+    ) #,
+    
+    # currently stuck within module >> needs exposing and pass to map to switch_map()
+    # input_switch((NS(id,'PnecRiskmap')), 
+    #              label = tooltip(
+    #                trigger = list(
+    #                  "'Show PNEC risk quotient (RQ) instead of concentration.'",
+    #                  bs_icon("info-circle")
+    #                ),
+    #                "PNEC is predicted no-effect concentration. RQ is concentration divided by PNEC."
+    #              ),
+    #              value = TRUE
+    #               
+    # )
   )
 }
 
