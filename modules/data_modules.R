@@ -13,7 +13,7 @@ library(scales)
 #' 
 
 # note: if changing any of the dat choices, make sure you change them elsewhere too (app.R map switch, and output$ui_placeholder below)
-dat_choices_pt <- c("EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data", "EA pollution inventory 2021", 
+dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data",  
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", "Custom file upload (.csv)")

@@ -61,12 +61,19 @@ UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
       tags$a(href="JavaScript: location.reload(true);",
              #tags$img(src = "https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png", height = "50px")
              tags$img(src = "UKCEH_Logo_Master_Black.png", height = "50px")
+             
       )#
       ,
+      tags$span(
+        tags$strong("", .noWS="outside", style = "padding-left:10px;"),
+        tags$p("Beta", .noWS="outside", style = "font-size:24px; background-color: lightblue;")
+      ),
       
       # Title in the center
+      
       tags$h1(title, style = "flex-grow: 1; text-align: middle;padding-left:40px;"), # can use middle or left text-align, and add  padding-left:40px;
       
+
       # Right Logo
       tags$img(src = "https://jncc.gov.uk/images/logo.png", height = "50px")
     )

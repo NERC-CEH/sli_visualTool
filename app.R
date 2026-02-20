@@ -22,6 +22,7 @@ library(shinycssloaders)
 library(RColorBrewer)
 library(tidyr)
 library(esquisse) # for  palettePicker
+library(shinymanager) # https://stackoverflow.com/questions/28987622/starting-shiny-app-after-password-input
 library(leaflegend)
 library(nanoparquet)
 
@@ -81,7 +82,7 @@ ui <- page_fillable(
   #theme = bs_theme(version = 5),
   theme = UKCEH_theme,  # << add this line
   #Application title
-  UKCEH_titlePanel("Chemical Pollution and the Environment"),
+  UKCEH_titlePanel("Chemical Pollution and the Environment", p("beta")),
   #h1('Chemcial Pollution and the Environment'),
   ## or use page_navbar
   # HTML('<p align="center" style="font-weight: bold;color:orange">For Demonstration purposes only. Under development.</p>'),
@@ -303,8 +304,41 @@ ui <- page_fillable(
   )
 )
 
+# Change labels: https://stackoverflow.com/questions/69145689/how-to-style-shimymanager-login-screen-with-css-only
+set_labels(
+  language = "en",
+  "Please authenticate" = "SLI app. Please authenticate",
+  # "Username:" = "Benutzername:",
+  # "Password:" = "Passwort:",
+  "Login" = "Login"
+)
+
+# Wrap your UI with secure_app
+ui <- secure_app(ui)
+
 
 server <- function(input, output, session) {
+  
+  # call the server part
+  # check_credentials returns a function to authenticate users
+  credentials <- data.frame(
+    user = c("shiny", "shinymanager", "sli"), # mandatory
+    password = c("azerty", "sli", "sli"), # mandatory
+    start = c("2019-04-15"), # optinal (all others)
+    expire = c(NA, "2030-12-31"),
+    admin = c(FALSE, FALSE),
+    comment = "Simple and secure authentification mechanism 
+  for single ‘Shiny’ applications.",
+    stringsAsFactors = FALSE
+  )
+  
+  res_auth <- secure_server(
+    check_credentials = check_credentials(credentials)
+  )
+  
+  output$auth_output <- renderPrint({
+    reactiveValuesToList(res_auth)
+  })
   
   # TODO: make it csv, may read faster
   
@@ -1052,7 +1086,7 @@ server <- function(input, output, session) {
   
 }
 
-# profvis::profvis(runApp('app.R’))
+# profvis::profvis(runApp('app.R'))
 
 # options(shiny.sanitize.errors = FALSE)
 options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
