@@ -65,13 +65,52 @@ UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
       )#
       ,
       tags$span(
-        tags$strong("", .noWS="outside", style = "padding-left:10px;"),
-        tags$p("Beta", .noWS="outside", style = "font-size:24px; background-color: lightblue;")
+        
+        tags$p(
+                "Beta",
+                .noWS = "outside",
+                style = "
+          display: inline-flex;
+          align-items: center;
+          font-size: 22px;
+          background-color: lightblue;
+          padding: 8px 16px;
+          margin: 20px 10px;
+          border-radius: 9999px;
+          line-height: 1;
+          white-space: nowrap;
+        "
+              )
+              
       ),
-      
+
       # Title in the center
-      
+
       tags$h1(title, style = "flex-grow: 1; text-align: middle;padding-left:40px;"), # can use middle or left text-align, and add  padding-left:40px;
+      
+      
+    #   tags$div(
+    #     style = "display: flex; align-items: center;",
+    #     
+    #     # Title aligned left near the logo
+    #     tags$h1(
+    #       title,
+    #       style = "margin: 0; text-align: left; padding-left: 40px;"
+    #     ),
+    #     
+    #     # Light-blue Beta badge
+    #     tags$span(
+    #       "Beta",
+    #       style = "
+    #       text-align: left;
+    #   background-color: lightblue;
+    #   padding: 6px 14px;
+    #   margin-left: 12px; 
+    #   border-radius: 6px;
+    #   font-size: 20px;
+    # "
+    #     )
+    #   ),
       
 
       # Right Logo
