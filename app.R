@@ -25,6 +25,7 @@ library(esquisse) # for  palettePicker
 library(shinymanager) # https://stackoverflow.com/questions/28987622/starting-shiny-app-after-password-input
 library(leaflegend)
 library(nanoparquet)
+library(lubridate)
 
 source('data_fun.R')
 source('map_fun.R')
@@ -177,7 +178,7 @@ ui <- page_fillable(
                                                 c('Chemical Pollution Indicator', 
                                                   # 'Mean Pharceuticals', 
                                                   # 'Mean metals', 
-                                                  'Mean Phenanthrene by region'  )),
+                                                  'Mean Phenanthrene by region'  )),  # currenlty disabled
                                     open = FALSE),
                   # nested right sidebar
                   layout_sidebar(
@@ -201,6 +202,7 @@ ui <- page_fillable(
                 )
                 , full_screen = TRUE)
     ),
+    
     # nav_panel(title = "Time series",
     #           card(
     #             #card_header("Card with sidebar"),
@@ -314,7 +316,7 @@ set_labels(
 )
 
 # Wrap your UI with secure_app
-ui <- secure_app(ui)
+# ui <- secure_app(ui)
 
 
 server <- function(input, output, session) {
@@ -951,7 +953,8 @@ server <- function(input, output, session) {
      
   })  
   
-  # ###### indicator map (Feb 2026: works but not being used, slow) #######
+  
+          
   # ## regional averages ##
   # regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
   #   addPolygons(
@@ -1088,7 +1091,7 @@ server <- function(input, output, session) {
 
 # profvis::profvis(runApp('app.R'))
 
-# options(shiny.sanitize.errors = FALSE)
+options(shiny.sanitize.errors = FALSE)
 options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
 shinyApp(ui, server)
 

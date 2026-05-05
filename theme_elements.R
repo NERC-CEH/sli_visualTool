@@ -114,7 +114,7 @@ UKCEH_titlePanel <- function(title = "UKCEH Shiny app", windowTitle = title){
       
 
       # Right Logo
-      tags$img(src = "https://jncc.gov.uk/images/logo.png", height = "50px")
+      tags$img(src = "jncc_logo.png", height = "50px")
     )
   )
 }
