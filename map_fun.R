@@ -368,6 +368,89 @@ map_fun_CSV <- function(map, data, long_col, lat_col, fillColor= "blue", legend_
   
 }
 
+
+
+## TEST:data = data_process_CIP()[[1]]
+## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$SampleValue)
+## leaflet() %>% addTiles() %>% map_fun_CIP(data = data, fillColor=fillColor)
+map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP"){
+  
+  print(data)
+  
+  # apply jittering
+  data$Latitude2 <- jitter(data$Latitude, factor = 0.001)
+  data$Longitude2 <- jitter(data$Longitude, factor = 0.001)
+  
+  
+  map  %>%
+    addCircleMarkers(
+      data = data,
+      lng = ~Longitude2, lat = ~Latitude2, radius = 8,
+      # clusterOptions = markerClusterOptions(),
+      popup = ~paste(
+        "<b>Treatment Plant: </b>", TreatmentPlant, "<br/>",
+        "<b>Sample Date and Time: </b>", SampleDateTime      , "<br/>",
+        "<b>Sample Location Name: </b>", SampleLocationName , "<br/>",
+        "<b>Sample Value: </b>", SampleValue , "<br/>",
+        "<b>Below Min. Reading : </b>", BelowMinReading , "<br/>",
+        "<b>NameDeterminandName : </b>", NameDeterminandName , "<br/>",
+        "<b>Unit: </b>", UnitsName, "<br/>",
+        "<b>Latitude: </b>", Latitude , "<br/>",
+        "<b>Longitude: </b>", Longitude, "<br/>",
+        
+        sep = ""
+      ),
+      color = "black",   # Outline color
+      fillColor = fillColor, # ~pal(transform_value), 
+      fillOpacity = 0.8, # Opacity of the fill color
+      weight = 0.2,
+      group = legend_title
+    ) 
+  
+}
+
+
+## TEST:data = data_process_NORMAN_EMPODAT()[[1]]
+## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$SampleValue)
+## leaflet() %>% addTiles() %>% map_fun_NORMAN_EMPODAT(data = data, fillColor=fillColor)
+map_fun_NORMAN_EMPODAT <- function(map, data, fillColor= "blue", legend_title = "NORMAN_EMPODAT"){
+  
+  print(data)
+  
+  # apply jittering
+  data$Latitude2 <- jitter(data$Latitude, factor = 0.001)
+  data$Longitude2 <- jitter(data$Longitude, factor = 0.001)
+  
+  
+  map  %>%
+    addCircleMarkers(
+      data = data,
+      lng = ~Longitude2, lat = ~Latitude2, radius = 8,
+      # clusterOptions = markerClusterOptions(),
+      popup = ~paste(
+        "<b>ID: </b>", ID , "<br/>",
+        "<b>Short sample code: </b>", `Short sample code`      , "<br/>",
+        "<b>Longitude: </b>", Longitude, "<br/>",
+        "<b>Latitude: </b>", Latitude , "<br/>",
+        "<b>Sample matrix: </b>", `Sample matrix` , "<br/>",
+        "<b>Unit : </b>", Unit    , "<br/>",
+        "<b>Year: </b>", Year , "<br/>",
+        "<b>Limit of detection: </b>", `Limit of detection` , "<br/>",
+        "<b>Limit of quantification: </b>", `Limit of quantification`, "<br/>",
+        "<b>Analytical method: </b>", `Analytical method`, "<br/>",
+        
+        
+        sep = ""
+      ),
+      color = "black",   # Outline color
+      fillColor = fillColor, # ~pal(transform_value), 
+      fillOpacity = 0.8, # Opacity of the fill color
+      weight = 0.2,
+      group = legend_title
+    ) 
+  
+}
+
 # this is a good horizontal legend: https://stackoverflow.com/questions/60838128/how-to-make-a-leaflet-legend-horizontal
 
 switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE, showPnecRiskmap = FALSE){
@@ -456,6 +539,9 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         legend_title = legend_title
       ) %>% 
       addLegend(
+        title = htmltools::HTML(paste0(
+          legend_title, "<br>", "Risk Quotient (RQ)"
+        )),
         position = "bottomright",
         colors = OkabeItoPal  %>% rev(),
         labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev()
@@ -713,6 +799,72 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         height = 10
       )
     
+  } else if (input_choice == "UKWIR Chemical Investigation Programme (CIP)") {
+    
+    if (nrow(map_data) == 0 ||
+        all(is.na(map_data$SampleValue))) {
+      dummy_color <- colorNumeric(palette = "Greys", domain = c(0, 1))
+      # Add a message in the legend indicating no data
+      m = m %>% addLegend(
+        position = "bottomright",
+        pal = dummy_color,
+        values = c(0, 1),
+        title = paste0(legend_title, "</br>", "No data available for this selection"),
+        opacity = 1
+      )
+    } else {
+    fillColor = colorNumeric(palette = brewer.pal(9, palette_name),
+                             domain = map_data$SampleValue )
+    
+    unit = map_data %>% pull(UnitsName) %>% nth(1)
+
+    m = m %>% map_fun_CIP(
+      map_data,
+      fillColor =  ~ fillColor(SampleValue ),
+      legend_title = legend_title
+    ) %>%
+      addLegendNumeric(
+        data = map_data,
+        position = "bottomright",
+        pal = fillColor,
+        values = ~ map_data$SampleValue ,
+        title = htmltools::HTML(paste0(
+          legend_title, "<br>", "Concentration", "<br>",unit
+        )),
+        shape = "rect",
+        orientation = "horizontal",
+        width = 200,
+        height = 10 #,
+        # numberFormat = function(x)
+        #   format(round(exp(x) - 1, 3), trim = TRUE)
+      )
+    }
+  } else if (input_choice == "NORMAN EMPODAT database") {
+    fillColor = colorNumeric(palette = brewer.pal(9, palette_name),
+                             domain = map_data$Concentration  )
+    
+    unit = map_data %>% pull(Unit) %>% nth(1)
+    
+    m = m %>% map_fun_NORMAN_EMPODAT(
+      map_data,
+      fillColor =  ~ fillColor(Concentration  ),
+      legend_title = legend_title
+    ) %>%
+      addLegendNumeric(
+        data = map_data,
+        position = "bottomright",
+        pal = fillColor,
+        values = ~ map_data$Concentration ,
+        title = htmltools::HTML(paste0(
+          legend_title, "<br>", "Concentration", "<br>",unit
+        )),
+        shape = "rect",
+        orientation = "horizontal",
+        width = 200,
+        height = 10 #,
+        # numberFormat = function(x)
+        #   format(round(exp(x) - 1, 3), trim = TRUE)
+      )
   }
   
   return(m)

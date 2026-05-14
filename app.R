@@ -25,6 +25,8 @@ library(esquisse) # for  palettePicker
 library(shinymanager) # https://stackoverflow.com/questions/28987622/starting-shiny-app-after-password-input
 library(leaflegend)
 library(nanoparquet)
+library(lubridate)
+library(forcats) # factor re-ordering
 
 source('data_fun.R')
 source('map_fun.R')
@@ -52,6 +54,10 @@ factpal <- colorFactor(color_data$RGB, values(gb_lcm_1km_dom_tar), na.color = 't
 # CompoundName <-  "Phenanthrene"
 # NUTS_region <- get_NUTS_regions(NUTS_lvl_code = 1)
 # NUTS_region_with_gcms_data <- data_process_EA_WQ_gcms_with_NUTS(fp_gcms_withNUTS = './datasets/EA_water_quality_GCMS_LCMS/gcms_data_with_NUTS.csv', NUTS_region = NUTS_region, CompoundName = "Phenanthrene")
+
+# import NUTS
+NUTS_sf <- read_sf("datasets/NUTS1_Jan_2018_SGCB_in_the_UK/NUTS1_Jan_2018_SGCB_in_the_UK.shp")
+
 
 watermarkcss <- "
 #watermark
@@ -170,37 +176,61 @@ ui <- page_fillable(
                 )
               )),
     nav_panel(title = "Indicator", 
-              card(
-                layout_sidebar(
-                  sidebar = sidebar(width = 400,
-                                    selectInput("RegtionOption", "Choose indicator to display:",
-                                                c('Chemical Pollution Indicator', 
-                                                  # 'Mean Pharceuticals', 
-                                                  # 'Mean metals', 
-                                                  'Mean Phenanthrene by region'  )),
-                                    open = FALSE),
-                  # nested right sidebar
-                  layout_sidebar(
-                    sidebar = sidebar(#"Right sidebar", 
-                                      HTML('<p align="center" style="font-weight: bold;color:orange">For illustration only.</p>'),
-                                      selectInput('countryInd', 'Choose Country:', c('England','Wales','Scotland','Northern Ireland'),),
-                                      selectInput('compartmentInd', 'Choose Compartment:', c('Terrestrial','Freshwater','Marine','Air')),
-                                      plotlyOutput("barplot_indicator"),
-                                      position = "right", width = 500, open = TRUE),
-                 
-                  # value_box(
-                  #   title = "",
-                  #   value = "62%",
-                  #   showcase = bs_icon("pie-chart"),
-                  #   p('of land has 1 or more unhealthy'),
-                  #   p('pollution indicators.'),
-                  #   theme = "info"
-                  # ),
-                  leafletOutput('regionMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9")
-                  )
-                )
-                , full_screen = TRUE)
+        layout_columns(
+          # col_widths = c(4, 4,4),
+          col_widths = breakpoints(
+            sm = 12, # Stacks on small
+            md = 12, # Stacks on medium
+            lg = c(3, 5, 4)   # Side-by-side on large
+          ),
+          card(
+            selectInput("RegtionOption", "Choose indicator to display:",
+                        c('Chemical Pollution Indicator', 
+                          # 'Mean Pharceuticals', 
+                          # 'Mean metals', 
+                          'Mean Phenanthrene by region'  )),
+            HTML('<p align="center" style="font-weight: bold;color:orange">For illustration only.</p>'),
+            leafletOutput('regionMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9")#,
+            # class = "border"
+            , full_screen = TRUE),
+          card(
+            fluidRow(
+              column(width = 6, 
+                     selectInput('countryInd', 'Choose NUTS1 region:', 
+                                 c(setNames(NUTS_sf$nuts118cd, NUTS_sf$nuts118nm), "England" = "ENG"),),
+                     
+              ),
+              column(width = 6, 
+                     selectInput('compartmentInd', 'Choose Compartment:', c('Terrestrial','Freshwater','Marine','Air')),
+              )
+            ),
+            plotlyOutput("barplot_indicator")  %>% withSpinner(type=5,color = "#A9A9A9"), 
+            plotlyOutput("barplot_pressures")#,
+            #class = "border"
+            , full_screen = TRUE),
+          card(
+            selectInput('factor_type', 'Choose factor:', "Vet medicine", "Vet. medicine"),
+            # h4("Covergence of evidence"),
+            #p("The number of unhealthy vet med sub-factors: 2"),
+            value_box(
+              title = "The number of above threshold vet med sub-factors",
+              value = textOutput("out_text_unhealthy"), # container = h2
+              showcase = bsicons::bs_icon("x-circle-fill"),
+              theme = value_box_theme(bg = "#fddce2", fg = "#b12051"),
+              #theme = value_box_theme(bg = "#F7D9BC", fg = "#ef8a62"),
+              # height = "130px",
+              class = "border"
+            ),
+            HTML(
+              '<p align="center" style="font-weight: bold;color:orange">Click on chemicals to view statistics.</p>'
+            ),
+            dataTableOutput('subfactor_table')  %>% withSpinner(type=5,color = "#A9A9A9") #,
+            #class = "border"
+            , full_screen = TRUE)
+          
+        )
     ),
+    
     # nav_panel(title = "Time series",
     #           card(
     #             #card_header("Card with sidebar"),
@@ -314,7 +344,7 @@ set_labels(
 )
 
 # Wrap your UI with secure_app
-ui <- secure_app(ui)
+# ui <- secure_app(ui)
 
 
 server <- function(input, output, session) {
@@ -951,7 +981,8 @@ server <- function(input, output, session) {
      
   })  
   
-  # ###### indicator map (Feb 2026: works but not being used, slow) #######
+  
+          
   # ## regional averages ##
   # regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
   #   addPolygons(
@@ -1004,58 +1035,39 @@ server <- function(input, output, session) {
   # 
   # 
   # ######################### indicator map by nation##  SLOW (15 seconds) #########
-  # uk_country <- read_sf("datasets/infuse_ctry_2011")
-  # uk_country <- st_transform(uk_country , 4326)
-  # uk_country <- rmapshaper::ms_simplify(uk_country) # maybe save this to be faster
-  # st_write(uk_country, file.path('datasets','infuse_ctry_2011','infuse_ctry_2011_small.shp'))
-  # 
-  uk_country <- read_sf("datasets/infuse_ctry_2011/infuse_ctry_2011_small.shp")
-  uk_country$colour <- c('#d7a12f','#9EC979','red','red')
-  uk_country$`Terrestrial` <- c(0.62,0.5,0.73,0.7)
-  uk_country$`Freshwater` <- c(0.8,0.5,0.83,0.77)
-  uk_country$`Marine` <- c(0.22,0.2,0.72,0.5)
-  uk_country$`Air` <- c(0.42,0.36,0.6,0.6)
-  uk_country$`Cu_mean` <- c(20.8,13.2,16.9,18.0)
-  uk_country$`Cd_mean` <- c(0.42,0.36,0.6,0.6)
-  uk_country$`Zn_mean` <- c(0.42,0.36,0.6,0.6)
-  uk_country$`spears` <- c(NA,NA,0.55,NA)
-  uk_country$`Paracetamol` <- c(NA,107.3,75.79,93.97)
-  uk_country$`Trimethoprim` <- c(NA,0.98,2.866,0.9)
-
-
-
-  indicatorNationMap = leaflet(uk_country) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
-    addPolygons(color = '#A9A9A9', weight = 1, smoothFactor = 0.5,
-                opacity = 1.0, fillOpacity = 0.5,
+  
+  NUTS_sf$colour <- c('#ffffbf','#67a9cf','#ef8a62','#ef8a62',
+                      '#ffffbf','#67a9cf','#ef8a62','#ef8a62',
+                      '#ffffbf','#67a9cf','#ef8a62','#ef8a62')
+  
+  indicatorNationMap = leaflet(NUTS_sf %>% st_transform(4326) %>% rename(lon = long)) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
+    addPolygons(color = '#A9A9A9', weight = 1, smoothFactor = 1.5,
+                opacity = 1.0, fillOpacity = 0.75,
                 fillColor = ~colour,
-                label = ~paste0(as.character(geo_label)),
-                popup = ~paste0("<b><h2>",as.character(geo_label),"</h2></b>",
-                                hr(style = "border: 1px solid black;"),
-                                "<br/>","Terrestrial: ","<b text-align='right'>", sprintf("%.1f%%", Terrestrial * 100),"</b>",
-                                "<br/>","Freshwater: ","<b >",sprintf("%.1f%%", Freshwater * 100),"</b>",
-                                "<br/>","Marine: ","<b>", sprintf("%.1f%%", Marine * 100),"</b>",
-                                "<br/>","Air: ","<b>", sprintf("%.1f%%", Air * 100),"</b>",
-                                p(),
-                                "<br/>","Mean Copper (mg kg<sup>-1</sup>): ","<b>", sprintf("%.1f", Cu_mean),"</b>",
-                                "<br/>","Mean Paracetamol in estuaries (ng l<sup>-1</sup>): ","<b>", sprintf("%.1f", Paracetamol),"</b>",
-                                "<br/>","Mean Trimethoprim in estuaries (ng l<sup>-1</sup>): ","<b>", sprintf("%.1f", Trimethoprim),"</b>",
-
-                                "<br/>","SPEAR<sub>pesticide</sub> for Summer 2019: ","<b>", sprintf("%.1f", spears),"</b>",
-                                p(),
-                                "<br/>","SPEAR<sub>pesticide</sub> value is derived from  <a href='https://doi.org/10.1016/j.scitotenv.2023.166519' target='_blank'>Poyntz-Wright et al. 2023 </a>",
-                                "<br/>","(corrected) pharmaceutical values are derived from <a href='https://doi.org/10.1016/j.scitotenv.2019.04.182' target='_blank'>Lestingers et al. 2019</a>",
-
+                label = ~paste0(as.character(nuts118nm)),
+                popup = ~paste0("<b><h4>",as.character(nuts118nm),"</h2></b>",
+                                "<b><h6>",as.character(nuts118cd),"</h4></b>", 
                                 "<p><font color='#c2c5cc'> &copy;" ,format(Sys.Date(), "%Y"),
-                                " UK Centre for Ecology and Hydrology </font></p>"
+                                " UK Centre for Ecology & Hydrology </font></p>"
                 ),
                 highlightOptions = highlightOptions(color = "white", weight = 2,
-                                                    bringToFront = TRUE))
-
-
-
+                                                    bringToFront = TRUE)) %>% 
+    addLegend(
+      title = htmltools::HTML(paste0(
+        "Overall concern"
+      )),
+      position = "bottomright",
+      # colors = c('#CD0000','#d7a12f','#9EC979'),
+      # labels = c("Unhealthy", "Moderate", "Healthy") 
+      colors = c('#ef8a62','#ffffbf','#67a9cf'),
+      labels = c("High", "Moderate", "Low") 
+    )
+  
+  
+  
   #output$regionMap = renderLeaflet(indicatorNationMap)
   # output$regionMap = renderLeaflet(regionMap)
-
+  
   observeEvent(input$RegtionOption, {
     if(input$RegtionOption == "Mean Phenanthrene by region"){
       output$regionMap = renderLeaflet(regionMap)
@@ -1063,32 +1075,200 @@ server <- function(input, output, session) {
       output$regionMap = renderLeaflet(indicatorNationMap)
     }
   })
-
-
-  output$barplot_indicator <- renderPlotly({
-    pressures = data.frame(
-      fieldname = c('Pesticides','Pharmaceuticals','Vet. medicine','Heavey metals', 'Predatory birds','Invertebrates','Land Use', 'Flooding'),
-      value = c(0.35,0.77,0.1,0.79,0.12,0.6,0.38,0.1)
+  
+  ########## pressures plots ###############
+  status <- list()
+  status[['vet_med']] <- read_csv('datasets/vet_med_status.csv')
+  status[['vet_med']]$substance <- status[['vet_med']]$substance %>% 
+    tools::toTitleCase() # dummy data
+  
+  
+  # data_process_chemref() %>%  filter(Compound_Name  %in% status[['vet_med']]$substance)
+  
+  
+  NUTS1_metrics <- read_csv('datasets/EA_water_quality_GCMS_LCMS/State_env_summary_data.csv') %>% 
+    rename(CompoundName = Chemical) %>% 
+    mutate(CompoundName = tools::toTitleCase(CompoundName)) %>% 
+    left_join(status[['vet_med']] %>% select(-status), by=c("CompoundName" = "substance") ) %>% # append PNEC  
+    mutate(status =   case_when(
+      mean < PNEC ~ "Below threshold",
+      mean  >= PNEC  ~ "Above threshold",
+      .default = "No data"
     )
-    pressures$value_rev = 1.0-pressures$value
-
-    {ggplot(pressures %>% pivot_longer(cols = value:value_rev)%>% arrange(fieldname)) +
-      geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
-      theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
-      scale_fill_manual(values=c('#9EC979','#B91E22')) +
-      ggtitle(paste0(input$countryInd,': ',  input$compartmentInd, ' (illustrative)'))+
-      coord_flip()} %>% ggplotly()
+    )
+  
+  # rule to combine GC/LC-MS: any unhealthy is unhealthy, only nodata if all is nodata
+  NUTS1_metrics_subfactors <- NUTS1_metrics %>% 
+    group_by(CompoundName, nuts118cd) %>% 
+    summarise(sum_unhealthy = sum(status == "Above threshold", na.rm = TRUE),
+              sum_healthy = sum(status == "Below threshold", na.rm = TRUE)) %>% 
+    mutate(status =   case_when(
+      sum_healthy > 0 & (sum_healthy > sum_unhealthy)  ~ "Below threshold",
+      sum_unhealthy > 0  ~ "Above threshold",
+      .default = "No data"
+    )) 
+  
+  NUTS1_metrics_summary <- NUTS1_metrics_subfactors %>% 
+    group_by(status, nuts118cd) %>% 
+    summarise(n=n()) %>% 
+    pivot_wider(names_from = status, values_from = n) %>% 
+    arrange(nuts118cd)
+  
+  pressures0 = tibble(
+    fieldname = c('Vet. medicine', 'Pesticides','Pharmaceuticals','Personal care products', 'Industrial chemcials'),
+    `Below threshold` = c(0.28,0,0,0,0),
+    `No data` = c(1,1,1,1,1),
+    `Above threshold` = c(0,0,0,0,0)
+  )
+  
+  
+  
+  BuGyRd <- c( "#005AB5", "#D3D3D3" ,"#DC3220") ##darker
+  
+  output$barplot_indicator <- renderPlotly({
+    
+    country_names = c(setNames(NUTS_sf$nuts118cd, NUTS_sf$nuts118nm), "England" = "ENG")
+    country_title <- names(country_names[country_names==input$countryInd])
+    
+    pressures = pressures0
+    
+    idx = which(NUTS1_metrics_summary$nuts118cd  == input$countryInd) # e.g. 'UKC'
+    
+    n_CompoundName <- NUTS1_metrics_subfactors %>% distinct(CompoundName) %>% nrow()
+    
+    pressures[which(pressures$fieldname == 'Vet. medicine'), "Below threshold"] <- NUTS1_metrics_summary[idx, "Below threshold"] / n_CompoundName
+    pressures[which(pressures$fieldname == 'Vet. medicine'), "No data"] <- NUTS1_metrics_summary[idx, "No data"] / n_CompoundName
+    pressures[which(pressures$fieldname == 'Vet. medicine'), "Above threshold"] <- NUTS1_metrics_summary[idx, "Above threshold"] / n_CompoundName
+    
+    
+    pressures = pressures %>% pivot_longer(cols = `Below threshold`:`Above threshold`)%>% arrange(fieldname, desc(name))
+    pressures$fieldname = factor(pressures$fieldname, levels = unique(pressures$fieldname))
+    pressures = pressures %>% arrange(fieldname) %>% 
+      mutate(name = fct_relevel(name, 
+                                "Below threshold", "No data", "Above threshold"))
+    print(pressures)
+    
+    {ggplot(pressures) +
+        geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
+        theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
+        scale_fill_manual(values= c("#67a9cf" , "#D3D3D3", "#ef8a62"))  +
+        theme(text = element_text(size = 16),
+              legend.position = "right")+
+        scale_x_discrete(limits=rev)+
+        ggtitle(paste0(country_title,': ',  input$compartmentInd))+
+        coord_flip()} %>% ggplotly()
   })
-
-
-
+  
+  output$barplot_pressures <- renderPlotly({
+    pressures2 = tibble(
+      fieldname = c('Flooding','Land Use','Population density'),
+      `Below threshold` = c(0.45, 0.24, 0.82)
+    )
+    pressures2$`Above threshold` = 1.0-pressures2$`Below threshold`
+    pressures2$`No data` = 0.0
+    pressures2 = pressures2 %>% arrange(fieldname) %>% 
+      pivot_longer(cols = -fieldname)%>% 
+      mutate(name = fct_relevel(name, 
+                                "Below threshold", "No data", "Above threshold"))
+    
+    
+    {ggplot(pressures2) +
+        geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
+        theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
+        scale_fill_manual(values=c( "#67a9cf" , "#D3D3D3", "#ef8a62" ))  +
+        theme(text = element_text(size = 16),
+              legend.position = "right")+
+        scale_x_discrete(limits=rev)+
+        ggtitle('Contributing pressures (illustrative)')+
+        coord_flip()} %>% ggplotly()
+  })
+  
+  output$out_text_unhealthy <- renderText({
+    req(input$countryInd)
+    NUTS1_metrics_summary[which(NUTS1_metrics_summary$nuts118cd  == input$countryInd), 'Above threshold'] %>% pull()
+  })
+  
+  
+  output$subfactor_table <- renderDataTable({
+    req(input$countryInd)
+    
+    # datatable(status[['vet_med']], selection = "single") %>%
+    #   formatStyle(
+    #     'status',
+    #     color = styleEqual(
+    #       unique(status[['vet_med']]$status), c('green', 'red', 'darkgray') # note only a few color options
+    #     )
+    #   )
+    
+    ## do a left_join with status[['vet_med']] to preserve order
+    DT =  {status[['vet_med']] %>% select(-status) } %>% # remove dummy status
+      left_join({
+        NUTS1_metrics_subfactors %>% ungroup() %>% 
+          filter(nuts118cd  == input$countryInd) %>% 
+          select(CompoundName, status) 
+      }, by = c("substance" = "CompoundName"))
+    
+    print(DT)
+    
+    
+    datatable(DT, selection = "single") %>%
+      formatStyle(
+        'status',
+        color = styleEqual(
+          unique(status[['vet_med']]$status), c('green', 'red', 'darkgray') # note only a few color options
+        )
+      )
+    
+  })
+  
+  
+  #   # if using modal dialog: https://stackoverflow.com/questions/71212121/r-shiny-click-on-table-field
+  
+  output$stats_table <- renderDataTable({
+    req(input$subfactor_table_rows_selected)
+    ii = input$subfactor_table_rows_selected
+    
+    
+    # data.frame(
+    #   metric_name = c('Mean','Median','5th percentile', '25th percentile',
+    #                   '75th percentile','95th percentile', 'Standard deviation',
+    #                   'Maximum','No. of samples','Range of sampling dates', 
+    #                   'Proportion of non-detects','Limit of detection (LoD)',
+    #                   'Predicted no-effect concentration (PNEC)'),
+    #   value = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+    # )
+    
+    target <- status[['vet_med']]$substance[ii] %>% tools::toTitleCase()
+    
+    
+    datatable(
+      NUTS1_metrics %>% filter(nuts118cd == input$countryInd) %>% 
+        select(CompoundName, measure_type, everything(), -`...1`) %>% 
+        filter(CompoundName == target ) %>% 
+        t()
+    )      
+  })
+  
+  observeEvent(input$subfactor_table_rows_selected, {
+    req(input$subfactor_table_rows_selected)
+    ii = input$subfactor_table_rows_selected
+    
+    showModal(modalDialog(
+      title = "England",
+      h2(paste0(status[['vet_med']]$substance[ii] , '\n\n')),
+      dataTableOutput("stats_table"),
+      size = 'l',
+      easyClose = TRUE,
+      footer = modalButton("Dismiss"))) # or NULL
+  })
+  
   
   
 }
 
 # profvis::profvis(runApp('app.R'))
 
-# options(shiny.sanitize.errors = FALSE)
+options(shiny.sanitize.errors = FALSE)
 options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
 shinyApp(ui, server)
 

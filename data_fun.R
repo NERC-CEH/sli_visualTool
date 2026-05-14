@@ -610,6 +610,144 @@ data_process_IYR <- function(IYR_choice = 'honeybees') {
   return(my_raster)
 }
 
+data_process_CIP <- function(NameDeterminandName='carbamazepine', year =  2020){
+  
+  directory = 'datasets/CIP data/'
+  capitalize <- function(x) {
+    substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+    x
+  }  
+  
+  data_CIP =  read_csv(
+    paste0(directory, capitalize(NameDeterminandName),'_CIP.csv'),
+    col_types = cols(
+      SampleDateTime = col_datetime(format = "%d/%m/%Y %H:%M")
+    )
+  ) %>% 
+    filter(lubridate::year(SampleDateTime) %in% year) %>% 
+    mutate(UnitsName = ifelse(UnitsName == "\xb5g/l","µg/l", UnitsName))
+  
+  # append long lat of treatment plant (Longitude, Latitude = 0): TODO
+  # data_CIP %>% group_by(Latitude,Longitude) %>% distinct(TreatmentPlant) %>% arrange(Latitude)
+  
+  # # data can be monthly, summarize data by site to yearly ==>> not working yet
+  # data_CIP = data_CIP %>% 
+  #   
+  #   group_by(year(SampleDateTime), Latitude, Longitude, TreatmentPlant ) %>% 
+  #   summarise(mean(SampleValue))
+  
+  return(list(filtered_data_CIP = data_CIP,
+              unique_CIP_varnames = list.files(directory) %>% substr(1,nchar(.)-8) %>% tolower()))
+}
+
+
+data_process_NORMAN_EMPODAT <- function(NameDeterminandName='carbamazepine', year =  2018){
+  
+  directory = 'datasets/NORMAN EMPODAT Database - Chemical Occurrence Data/'
+  capitalize <- function(x) {
+    substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+    x
+  }  
+  
+  # read_norman_csv = function(file) {
+  #   
+  #   
+  #   # Step 1 — read first two rows manually (headers)
+  #   header_raw <- read_csv(file, n_max = 2, col_names = FALSE)
+  #   
+  #   # Step 2 — combine headers
+  #   header <- header_raw %>%
+  #     t() %>%
+  #     as.data.frame() %>%
+  #     mutate(
+  #       name = paste0(X1, "_", X2),
+  #       name = str_replace_all(name, "^_|_$", ""),   # trim leading/trailing _
+  #       name = str_replace_all(name, "__+", "_")
+  #     ) %>%
+  #     pull(name)
+  #   
+  #   # Step 3 — make names clean & unique
+  #   header <- janitor::make_clean_names(header, unique = TRUE)
+  #   
+  #   # Step 4 — read data using these names
+  #   df <- read_csv(
+  #     file,
+  #     skip = 2,
+  #     col_names = header,
+  #     locale = locale(encoding = "Windows-1252"),
+  #     col_types = cols(.default = col_character())  # safer for messy data
+  #   )
+  #   
+  #   # Inspect
+  #   glimpse(df)
+  #   
+  #   
+  # }
+  
+  
+  
+  data =  read_csv(
+    paste0(directory, capitalize(NameDeterminandName),'_Norman.csv'), 
+    col_select = c(1, 4, 14, 19, 22, 30 ,31, 34, 66,67,72),
+    skip=2) 
+  
+  names(data) <- c('ID', "Short sample code", "Longitude", "Latitude", "Sample matrix",
+                   "Concentration", "Unit", "Year", "Limit of detection", 
+                   "Limit of quantification", "Analytical method")
+    
+  
+
+  
+  return(list(filtered_data = data %>% filter(Year %in% year) ,
+              unique_varnames = list.files(directory) %>% substr(1,nchar(.)-11) %>% tolower()))
+}
+
+
+data_process_LoughNeagh <- function(NameDeterminandName='carbamazepine', year =  2020){
+  ## quite slow to read, takes a few seconds
+  ## handle file issues
+  # 
+  # file = 'datasets/Northern Ireland data/LoughNeaghCatchmentChemistry2015-2024.CSV'
+  # raw <- readLines(file, encoding = "UTF-8", warn = FALSE)
+  # 
+  # # Replace invalid bytes safely
+  # clean <- iconv(raw, from = "UTF-8", to = "UTF-8", sub = "")
+  # 
+  # df <- read_csv(I(clean))
+  
+# 
+#   df = read_csv('datasets/Northern Ireland data/LoughNeaghCatchmentChemistry2015-2024.CSV',
+#                col_select = 1:20)   # first 20 columns
+# 
+#   
+#   # Step 1: fix column names (pair each Q with its variable)
+#   new_names <- names(df)
+#   
+#   for (i in seq_along(new_names)) {
+#     if (new_names[i] == "Q" && i > 1) {
+#       new_names[i] <- paste0(new_names[i - 1], "_Q")
+#     }
+#   }
+#   
+#   names(df) <- new_names
+#   
+#   # Step 2: pivot
+#   df_long <- df %>%
+#     pivot_longer(
+#       cols = -c(site, date),   # keep your ID columns here
+#       names_to = c("variable", ".value"),
+#       names_pattern = "(.*?)(_Q)?$"
+#     )
+#   
+#   df_long
+#   
+#   
+#   return(list(filtered_data_CIP = data_CIP,
+#               unique_CIP_varnames = list.files(directory) %>% substr(1,nchar(.)-8) %>% tolower()))
+}
+
+
+
 data_process_chemref <- function(){
   
   # This function process important reference info on chemicals, usually for GCMS and LCMS

@@ -15,6 +15,11 @@ unique_pfas_names <- data_process_pfas()[['unique_pfas_names']]
 unique_apiens_varnames <- data_process_apiens()[['unique_apiens_varnames']][-1] # drop first one
 unique_apiens_NECD <- data_process_apiens()[['unique_apiens_NECD']]
 
+
+unique_CIP_varnames <- data_process_CIP()[['unique_CIP_varnames']]
+
+unique_EMPODAT_varnames <- data_process_NORMAN_EMPODAT()[['unique_varnames']]
+
 ea_gcms_choices <-
   list(`Pharmaceuticals` = list( "Diphenyl ether","Ibuprofen", "Ketamine","Mirtazapine", "Phenanthrene"), #"Benzothiazole",
      `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole (Terbuconazole)", "Thiabendazole"),
@@ -35,13 +40,12 @@ ea_pollution_sliders <- function(id) {
   )
 }
 
-
 # data_gcms <- read.csv('datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening.csv')
 # data_gcms %>% distinct(Compound_Name)
 ea_gcms_sliders <- function(id) {               
   tagList(
     HTML('<p align="center" style="font-weight: bold;color:orange">Note: please read key info regarding the semi-quantitative screen data <a href="https://environment.data.gov.uk/dataset/e85a7a52-7a75-4856-a0b3-8c6e4e303858" target="_blank">here</a></p>'),
-  
+    
     selectInput((NS(id,"gcms_compound")), 
                 label = tooltip(
                   trigger = list(
@@ -53,7 +57,7 @@ ea_gcms_sliders <- function(id) {
                 # change to groups: e.g. Vet med.
                 choices = ea_gcms_choices,
                 selected = "Phenanthrene"
-                ),
+    ),
     tableOutput(NS(id,"chem_info")),
     # code("code displays your text similar to computer code"),
     
@@ -78,6 +82,63 @@ ea_gcms_sliders <- function(id) {
   )
 }
 
+
+CIP_sliders <- function(id) {               
+  tagList(
+    sliderInput(NS(id,"year_slider"), "Select Year Range:",
+                min = 2015, max = 2021, 
+                value = c(2020, 2021),
+                sep = "",
+                animate = FALSE
+    ),
+    
+    selectInput(NS(id,"variable_choices"), "Choose variable:",
+                choices = unique_CIP_varnames,
+                selected = "fipronil"
+    )
+  )
+}
+
+ EMPODAT_sliders <- function(id) {               
+   tagList(
+     sliderInput(NS(id,"year_slider"), "Select Year Range:",
+                 min = 2015, max = 2021, 
+                 value = c(2018,2019),
+                 sep = "",
+                 animate = FALSE
+     ),
+     
+     selectInput(NS(id,"variable_choices"), "Choose variable:",
+                 choices = unique_EMPODAT_varnames,
+                 selected = "fipronil"
+     )
+   )
+ }
+  
+ LoughNeagh_sliders <- function(id) {               
+   tagList(
+     HTML('<p align="center" style="font-weight: bold;color:orange">Note: please read key info regarding the semi-quantitative screen data <a href="https://environment.data.gov.uk/dataset/e85a7a52-7a75-4856-a0b3-8c6e4e303858" target="_blank">here</a></p>'),
+     
+     selectInput((NS(id,"gcms_compound")), 
+                 label = tooltip(
+                   trigger = list(
+                     "Choose compound:",
+                     bs_icon("info-circle")
+                   ),
+                   "We have only listed a small subset of the 1000+ chemicals available here."
+                 ),
+                 # change to groups: e.g. Vet med.
+                 choices = ea_gcms_choices,
+                 selected = "Phenanthrene"
+     ),
+     
+     sliderInput((NS(id,"year_slider")), "Select Year Range:",
+                 min = min(2013), max = max(2024),
+                 sep = "",
+                 value = c("2020", "2021"), animate = FALSE
+     )
+   )
+ }
 
 pbms_sliders <- function(id) {               
   tagList(
@@ -210,7 +271,7 @@ Biotoxins_sliders <- function(id) {
 csv_upload_sliders <- function(id) {   
   
   tagList(
-    # HTML('<p align="center" style="font-weight: bold;color:orange">Note: This data is not intended for comparing the pollution contributions of different sectors.</p>'),
+    HTML('<p align="center" style="font-weight: bold;color:orange">Feature under development--not yet working.</p>'),
     
     fileInput(NS(id,"csv_filepath"), "Upload your own CSV File", accept = ".csv"),
     

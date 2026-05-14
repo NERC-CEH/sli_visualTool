@@ -16,7 +16,12 @@ library(scales)
 dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data",  
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
-                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", "Custom file upload (.csv)")
+                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
+                    "UKWIR Chemical Investigation Programme (CIP)",
+                    # "Wastewater treatment works (WwTW) info",
+                    "NORMAN EMPODAT database",
+                    # "Lough Neagh Catchment Chemistry",
+                    "Custom file upload (.csv)")
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -141,6 +146,12 @@ datselect_mod_server <-  function(id) {
         euso_sliders(id)
       } else if (type == 'UK cats and dogs density') {
         cats_dogs_sliders(id)
+      } else if (type == 'UKWIR Chemical Investigation Programme (CIP)') {
+        CIP_sliders(id)
+      } else if (type == 'NORMAN EMPODAT database') {
+        EMPODAT_sliders(id)
+      # } else if (type == 'Lough Neagh Catchment Chemistry') {
+      #   LoughNeagh_sliders(id)
       } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
         IYR_sliders(id)
       } else if (type == 'Custom file upload (.csv)') {
@@ -150,6 +161,7 @@ datselect_mod_server <-  function(id) {
       }
     })
     
+  
     
     #### add reactive electives to individual datasets in the data module.
     
@@ -239,9 +251,15 @@ datselect_mod_server <-  function(id) {
           data_process_catsdogs(var_choice = input$cats_or_dogs)  
         } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
           data_process_IYR(IYR_choice = input$IYR_choice)  
-        } else if (type == " Custom file upload (.csv)") {
-          csv_upload_mod_server(id)         
-         
+        } else if (type == "Custom file upload (.csv)") {
+          csv_upload_mod_server(id)    
+          
+        }  else if (type == "UKWIR Chemical Investigation Programme (CIP)") {
+            data_process_CIP(NameDeterminandName=input$variable_choices, 
+                             year = input$year_slider)[[1]]  
+        }  else if (type == "NORMAN EMPODAT database") {
+          data_process_NORMAN_EMPODAT(NameDeterminandName=input$variable_choices, 
+                           year = input$year_slider)[[1]]   
         } else if (type == "EA water quality GCMS/LCMS data (RISK)") {
           data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
                                   start_year = input$year_slider[1],
