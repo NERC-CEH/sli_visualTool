@@ -1,6 +1,8 @@
 # Developer guide to adding new datasets to the JNCC visual tool
 
 ## Overview of app data handling
+> [!NOTE]
+> The datasets used in this app is not included in the repo.
 
 ## Steps to add new datasets.
 
@@ -17,3 +19,6 @@ Then in `data_modules.R`. Add call to these functions in the appropriate places.
 1. Add call to `*_sliders` in `output$ui_placeholder` in the module `datselect_mod_server`. 
 2. Add call to `data_process_` in `filtered_data` in the module `datselect_mod_server`. 
 3. Add call to `map_fun_*` at ... (work in progress)
+
+
+![Diagram illustrating the steps to include new dataset.](www/shiny_pipeline_schematic.svg)
