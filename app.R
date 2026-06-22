@@ -7,7 +7,8 @@ library(bslib)
 library(bsicons)
 library(leaflet)
 library(DT)
-library(raster)
+library(raster) # to retire?
+library(terra)
 library(dplyr)
 library(leaflet.extras)
 library(leafem)
@@ -100,6 +101,7 @@ ui <- page_fillable(
                 #card_header("Card with sidebar"),
                 layout_sidebar(
                   sidebar = sidebar(width = 400,
+                                    # style = "overflow-y: auto; max-height: 100vh; cursor: default;",  # scrollable
                                     tags$div(
                                       tags$span(
                                         "Quick Tip: Start by clicking 'Add Dataset', and then expand the controls. See user guide for more details.",
@@ -112,11 +114,11 @@ ui <- page_fillable(
                                     input_task_button("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
                                     input_task_button("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
                                     input_task_button("updateBtn", "Update map", class = "btn-success",width = '100%')   # tentative: testing 16/2/2026, input_task_button vs actionButton
-                  ),
+                            ),
                   navset_card_underline(
                     # title = "Visualizations",
                     nav_spacer(),
-                    
+
                     nav_panel("Map",
                               ### EXTRA button controls
                               # https://rstudio.github.io/bslib/articles/tooltips-popovers/index.html
@@ -125,8 +127,8 @@ ui <- page_fillable(
                               #   p('Coming soon!'),
                               #   title = "Map controls", class = 'rightAlign',
                               #   palettePicker(
-                              #     inputId = "pal2", 
-                              #     label = "With a list of palette:", 
+                              #     inputId = "pal2",
+                              #     label = "With a list of palette:",
                               #     choices = list(
                               #       "Viridis" = list(
                               #         "viridis" = viridis_pal(option = "viridis")(10),
@@ -141,9 +143,9 @@ ui <- page_fillable(
                               #         "Paired" = brewer_pal(palette = "Paired")(8),
                               #         "Set1" = brewer_pal(palette = "Set1")(8)
                               #       )
-                              #     ), 
+                              #     ),
                               #     textColor = c(
-                              #       rep("white", 5), rep("black", 4) 
+                              #       rep("white", 5), rep("black", 4)
                               #     )
                               #   )
                               # ),
@@ -163,7 +165,7 @@ ui <- page_fillable(
                                 multiple = TRUE, open=TRUE
                               )
                     ),
-                    nav_panel("Table", 
+                    nav_panel("Table",
                               # verbatimTextOutput("out"),   # uncomment for debugging
                               # verbatimTextOutput("out2"),
                               accordion(
@@ -173,7 +175,7 @@ ui <- page_fillable(
                     )
                     , full_screen = TRUE
                   )
-                )
+                 )
               )),
     nav_panel(title = "Indicator", 
         layout_columns(
@@ -354,7 +356,7 @@ server <- function(input, output, session) {
   credentials <- data.frame(
     user = c("shiny", "shinymanager", "sli"), # mandatory
     password = c("azerty", "sli", "sli"), # mandatory
-    start = c("2019-04-15"), # optinal (all others)
+    start = c("2019-04-15"), # optional (all others)
     expire = c(NA, "2030-12-31", NA),
     admin = c(FALSE, FALSE,FALSE),
     comment = "Simple and secure authentification mechanism 

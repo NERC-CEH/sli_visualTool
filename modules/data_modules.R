@@ -17,6 +17,7 @@ dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS d
                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
+                    "Pesticde risk to insects",
                     "UKWIR Chemical Investigation Programme (CIP)",
                     # "Wastewater treatment works (WwTW) info",
                     "NORMAN EMPODAT database",
@@ -79,37 +80,37 @@ datselect_mod_ui <- function(id, dataset_i, dat_choices = dat_choices_pt) {
   )
 }
 
-datselect_mod_server_OLD <-  function(id) {
-  moduleServer(id, function(input, output, session) {
-    return_value <- reactive({
-      input$data_choice
-    })
-    ns <- session$ns
-    
-    # conditional UI
-    output$ui_placeholder <- renderUI({
-      type <- req(input$data_choice)
-      
-      if (type == "EA pollution inventory 2021") {
-        ea_pollution_sliders(id)
-      } else if (type == "EA water quality GCMS/LCMS data") {
-        ea_gcms_sliders(id)
-      } else if (type =="Predatory Bird Monitoring Scheme") {
-        pbms_sliders(id)
-      } else if (type == "PFAS") {
-        pfas_sliders(id)
-      } else if (type == "HadUK-Grid Annual Rainfall") {
-        rain_sliders(id)
-      }
-    })
-    result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
-    filtered_data <- result[[1]]
-    
-    ## if we later want to do some more sophisticated logic
-    ## we can add reactives to this list
-    list(return_value = return_value, filtered_data = filtered_data)
-  })
-}
+# datselect_mod_server_OLD <-  function(id) {
+#   moduleServer(id, function(input, output, session) {
+#     return_value <- reactive({
+#       input$data_choice
+#     })
+#     ns <- session$ns
+#     
+#     # conditional UI
+#     output$ui_placeholder <- renderUI({
+#       type <- req(input$data_choice)
+#       
+#       if (type == "EA pollution inventory 2021") {
+#         ea_pollution_sliders(id)
+#       } else if (type == "EA water quality GCMS/LCMS data") {
+#         ea_gcms_sliders(id)
+#       } else if (type =="Predatory Bird Monitoring Scheme") {
+#         pbms_sliders(id)
+#       } else if (type == "PFAS") {
+#         pfas_sliders(id)
+#       } else if (type == "HadUK-Grid Annual Rainfall") {
+#         rain_sliders(id)
+#       }
+#     })
+#     result <- data_process_EA_pollution(IndustrySector = input$IndustrySector)
+#     filtered_data <- result[[1]]
+#     
+#     ## if we later want to do some more sophisticated logic
+#     ## we can add reactives to this list
+#     list(return_value = return_value, filtered_data = filtered_data)
+#   })
+# }
 
 
 
@@ -154,6 +155,8 @@ datselect_mod_server <-  function(id) {
       #   LoughNeagh_sliders(id)
       } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
         IYR_sliders(id)
+      } else if (type ==   "Pesticde risk to insects") {
+        pesticide_risk_sliders(id)
       } else if (type == 'Custom file upload (.csv)') {
         csv_upload_sliders(id)
       } else {
@@ -163,7 +166,7 @@ datselect_mod_server <-  function(id) {
     
   
     
-    #### add reactive electives to individual datasets in the data module.
+    #### add reactive electives to individual datasets in the data module
     
     # # update pbms_sliders selectinput for otters and sparrowhawks
     observeEvent(input$var_biota, {
@@ -251,6 +254,10 @@ datselect_mod_server <-  function(id) {
           data_process_catsdogs(var_choice = input$cats_or_dogs)  
         } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
           data_process_IYR(IYR_choice = input$IYR_choice)  
+        } else if (type == "Pesticde risk to insects") {
+          data_process_pesticide_risk(year_choice = input$slider,
+                                      insect_choice = input$insect_choice,
+                                 chemical = input$chemical)  
         } else if (type == "Custom file upload (.csv)") {
           csv_upload_mod_server(id)    
           

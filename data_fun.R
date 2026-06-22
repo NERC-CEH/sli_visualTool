@@ -568,6 +568,16 @@ data_process_apiens <- function(var_choices = c("NH4-N","NO3-N"),
 }
 
 data_process_catsdogs <- function(var_choice = 'Estimated Cat Population') {
+  
+  if (var_choice == "Estimated Dog Population (Dogs Trust, 2019)"){
+    
+    dogs_pop_sf <- read_sf("datasets/Dogs_trust/dogs_population_per_region.shp") %>% 
+      rename(Value = Ppltnes) %>% 
+      st_transform(4326)
+    
+    filtered_data_catsdogs <- dogs_pop_sf
+  } else {
+  
   my_sf <- read_sf("datasets/UK-postal-boundaries-Jan2015/Districts.shp") %>% 
     rename(PostcodeDistrict = name)
   
@@ -582,15 +592,15 @@ data_process_catsdogs <- function(var_choice = 'Estimated Cat Population') {
   my_sf <- right_join(my_sf, merge(cats,dogs), by = join_by(PostcodeDistrict)) %>% 
     left_join(usual_residents, by = join_by(PostcodeDistrict))
   
+  ## takes long time to run. pre-stored?
   simplified <- rmapshaper::ms_simplify(my_sf)
   object.size(simplified)
   
-  
   var_choice = gsub(" ", "", var_choice, fixed = TRUE)
+  filtered_data_catsdogs = my_sf %>% mutate(Value = get(var_choice))
   
-  
-  
-  return(filtered_data_catsdogs = my_sf %>% mutate(Value = get(var_choice)) ) # if rename use !!var_choice
+  }
+  return(filtered_data_catsdogs ) # if rename use !!var_choice
   
   
 }
@@ -606,9 +616,26 @@ data_process_EUSO <- function(euso_var_choices = 'Cu') {
 data_process_IYR <- function(IYR_choice = 'honeybees') {
   
   folder_IYR = 'datasets/Agzero_input_yield_ratio/dfe2a4a5-2b3a-4731-ba7f-aea7e926f1dd/data/'
-  my_raster <- raster(paste0(folder_IYR,'input_to_yield_ratio_', IYR_choice,'.tiff'))
+  my_raster <- terra::rast(paste0(folder_IYR,'input_to_yield_ratio_', IYR_choice,'.tiff'))
   return(my_raster)
 }
+
+data_process_pesticide_risk <- function(insect_choice = 'honeybees', 
+                                        year_choice = 2016,
+                                        chemical = 'insecticide') {
+  # 12 bands containing data collected every other year from 1994 to 2016
+  
+  
+  folder = 'datasets/pesticide_risk_to_insects'
+  chemical = chemical %>% tolower() #%>% str_replace_all(" ","_") # lowercase underscore
+  longname = paste0(str_replace(insect_choice,'.-',''), '_risk_', chemical, '.tif')
+  filename = file.path(folder,'data', insect_choice,longname)
+  print(filename)
+  
+  my_raster <- terra::rast(filename) #[[paste0('y_',as.character(year_choice))]] # choose band
+  return(my_raster)
+}
+
 
 data_process_CIP <- function(NameDeterminandName='carbamazepine', year =  2020){
   
