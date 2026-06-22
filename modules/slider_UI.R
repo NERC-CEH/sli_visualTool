@@ -238,7 +238,10 @@ cats_dogs_sliders <- function(id) {
   tagList(
     p('Overlaying this dataset on the map may take a few seconds.'),
     selectInput(NS(id,"cats_or_dogs"), "Choose density:",
-                choices = c('Estimated Cat Population ','Estimated Dog Population','Usual Residents') 
+                choices = c('Estimated Cat Population ',
+                            'Estimated Dog Population',
+                            'Usual Residents',
+                            'Estimated Dog Population (Dogs Trust, 2019)') 
     ),
     p()
   )
@@ -252,6 +255,53 @@ IYR_sliders <- function(id) {
                             "Pesticide risks to Honeybees" = "honeybees",
                             "N fertilisers" = "nitrogen_fertilisers",
                             "P fertilisers" = "phosphorus_fertilisers")
+    ),
+    p()
+  )
+}
+
+
+pesticide_risk_sliders <- function(id) {
+  tagList(
+    selectInput(NS(id,"insect_choice"), "Choose insect species:",
+                choices =list.dirs('datasets/pesticide_risk_to_insects/data',
+                                   full.names = FALSE, recursive = FALSE),
+                 selected = 'honeybees'
+    ),
+    
+    # pesticide group (insecticide, herbicide, fungicide or molluscicide) or class (Triazole, Carbamate, Morpholine, Strobilurin, Benzimidazole, Urea, Dinitroaniline, Organophosphate, Thiocarbamate, Aryloxyalkanoic acid, Chloroacetamide, Benzamide, Triazine, Pyridine compound, Triazinone, Pyrethroid, Neonicotinoid). 
+
+    selectInput(NS(id,"chemical"), "Choose chemical class or chemical group:",
+                list(`Aggregate` = list("All chemicals" = "allchem",
+                                        "insecticide", "herbicide", "fungicide", "molluscicide"),
+                     `Herbicide` = list("Aryloxyalkanoic acid" = "aryloxyalkanoic-acid_herbicide",
+                                        "benzamide" = "benzamide_herbicide",
+                                        "carbamate" = "carbamate_herbicide",
+                                        "chloroacetamide" = "chloroacetamide_herbicide",
+                                        "dinitroaniline" = "dinitroaniline_herbicide",
+                                        "organophosphate" = "organophosphate_herbicide",
+                                        "pyridine-compound" = "pyridine-compound_herbicide",
+                                        "thiocarbamate" = "thiocarbamate_herbicide",
+                                        "triazine" = "triazine_herbicide",
+                                        "triazinone" = "triazinone_herbicide",
+                                        "urea" = "urea_herbicide",
+                                        "other"  = "other_herbicide"),
+                     `Fungicide` = list("benzimidazole"= "benzimidazole_fungicide",
+                                        "carbamate"= "carbamate_fungicide",
+                                        "morpholine"= "morpholine_fungicide",
+                                        "strobilurin"= "strobilurin_fungicide",
+                                        "triazole"= "triazole_fungicide",
+                                        "other"= "other_fungicide"),                                   
+                    `Insecticide` = list("carbamate"= "carbamate_insecticide",
+                                         "neonicotinoid"= "neonicotinoid_insecticide",
+                                         "organophosphate"= "organophosphate_insecticide",
+                                         "pyrethroid"= "pyrethroid_insecticide",
+                                         "other"= "other_insecticide"),
+                    `Molluscicide` = list("other"= "other_molluscicide")
+                )                
+    ),
+    sliderInput(NS(id,"year_slider"), "Choose year", min = 1994, max = 2016, step = 2, value = 2016
+                
     ),
     p()
   )

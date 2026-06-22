@@ -297,7 +297,11 @@ map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS"
   
 }
 
+## 
+## leaflet() %>% addTiles() %>% map_fun_catsdogs(map_data = data)
 map_fun_catsdogs  <- function(map, map_data, palette_name = 'viridis', legend_title = "Density by postcode") {
+  
+  ## TODO: dogs trust, fix interactivity in switch_map
   
   pal <- colorNumeric(palette_name, NULL)
   
@@ -335,6 +339,32 @@ map_fun_EUSO <- function(map, data, colors, legend_title = "Soil health") {
 
 
 map_fun_IYR <- function(map, data, colors, legend_title = "Input to Yield Ratio") {
+  
+  #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
+  map %>% 
+    addRasterImage(data, 
+                   colors = colors, 
+                   opacity = 0.7,
+                   group = legend_title) 
+  
+}
+
+
+# TEST DATA
+# data = data_process_pesticide_risk()
+# fillColor <- colorBin( ## doesn't work yet
+#   palette = brewer.pal(7, 'Blues'),
+#   domain = values(data),
+#   bins = c(0,1,10,100,1000,10000,100000),
+#   na.color = "transparent"
+# )
+# leaflet() %>% addTiles() %>% map_fun_pesticide(data, colors)  %>% 
+#   addLegend("bottomright", 
+#             pal = pal, 
+#             values = ~log10(testData),
+#             title = "Test Result",
+#             opacity = 1)
+map_fun_pesticide <- function(map, data, colors, legend_title = "Pesticide risk to insects") {
   
   #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
   map %>% 
@@ -798,7 +828,34 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         width = 200,
         height = 10
       )
+ 
     
+  } else if (input_choice == "Pesticde risk to insects") {
+    values <- values(map_data)
+    # values <- values[!is.na(IYR_values)]
+
+    fillColor <- colorNumeric(
+      palette = brewer.pal(9, palette_name),
+      domain = values,
+      na.color = "transparent"
+    )
+
+    m = m %>% map_fun_pesticide(map_data, colors =  fillColor, legend_title = legend_title) %>%
+      addLegendNumeric(
+        data = map_data,
+        position = "bottomright",
+        pal = fillColor,
+        values = values(map_data),
+        title = htmltools::HTML(paste0(legend_title , "<br>", "[Risk factor]")),
+        group = legend_title,
+        # na.label = NULL,
+        shape = "rect",
+        orientation = "horizontal",
+        width = 200,
+        height = 10
+      )
+    
+       
   } else if (input_choice == "UKWIR Chemical Investigation Programme (CIP)") {
     
     if (nrow(map_data) == 0 ||
