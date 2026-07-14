@@ -30,9 +30,32 @@ color_data <- data.frame(
           "#FFFF80", "#FFFF80", "#8080ff", "#000000", "#808080")
 )
 
+# nudging 
+
+my_jitter <- function(df) {
+  # jitter data by a small amount
+  #
+  # Typical values for EPSG:4326:
+  #   AmountApprox distance
+  # 0.0001~11m
+  # 0.0005~55m
+  # 0.001~110m
+  df %>%
+    mutate(
+      Longitude = jitter(Longitude, amount = 0.0005),
+      Latitude = jitter(Latitude, amount = 0.0005)
+    )
+}
+
+
 map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sector',
-                                 fillColor = "blue",legend_title = 'EA Pollution Inventory 2021'){
-  map %>% 
+                                 fillColor = "blue",legend_title = 'EA Pollution Inventory 2021',
+                                 cluster_points = FALSE){
+
+  # NA data is below reporting threshold
+  
+  
+    map %>% 
     #addControl(data = data, html = paste("<h5>", Regulated_Industry_Sector, "</h5>", sep = ""), position = "topright") %>%
     addCircleMarkers(
       data = data,
@@ -48,7 +71,9 @@ map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sec
       fillColor = fillColor, # Fill color
       fillOpacity = 0.8, # Opacity of the fill color
       weight = 0.5,
-      group = legend_title
+      group = legend_title,
+      clusterOptions = if (cluster_points) markerClusterOptions() else NULL
+      
     )
 }
 
@@ -119,6 +144,7 @@ map_fun_pbms <- function(map, data,
                            "<b>Year: </b>", year, "<br/>",
                            "<b>Variable: </b>", var_map_sgl , "<br/>",
                            "<b>Value: </b>", round(value,digits=2) , "<br/>",
+                           "<b>Unit: </b>", "µg/g dry weight" , "<br/>",
                            sep = ""
                          ),
                          color = "black",   # Outline color
@@ -127,6 +153,7 @@ map_fun_pbms <- function(map, data,
                          weight = 0.5,) %>%  
         addLegend("bottomright", data=data, pal = qpal, values = ~value,
                   title = paste(legend_title, "</br>Metals conc. [µg/g dry weight]"),
+                  na.label = "chemicals data not available",
                   opacity = 1, group = legend_title
         )
       
@@ -156,7 +183,10 @@ map_fun_pbms <- function(map, data,
                              "<b>AgeClass: </b>", `Age (Adult/Juvenile/Unknown)`, "<br/>",
                              "<b>Year: </b>", year, "<br/>",
                              "<b>Variable: </b>", var_map_sgl , "<br/>",
-                             "<b>Value: </b>", value , "<br/>",
+                             "<b>Value: </b>",  round(value,digits=2) , "<br/>",
+                             "<b>Unit: </b>", if_else(var_map_sgl %in% metals_choices,
+                                                      "µg/g dry weight", "ng/g dry weight" ), "<br/>",
+                             
                              sep = ""))  
         
             if (var_map_sgl %in% metals_choices){
@@ -188,10 +218,13 @@ map_fun_pbms <- function(map, data,
                            "<b>AgeClass: </b>", AGE, "<br/>",
                            "<b>Year: </b>", year, "<br/>",
                            "<b>Variable: </b>", var_map_sgl , "<br/>",
-                           "<b>Value: </b>", value , "<br/>",
+                           "<b>Value: </b>",  round(value,digits=2) , "<br/>",
+                           "<b>Unit: </b>", "ng/g dry weight" , "<br/>",
                            sep = "")) %>%  
         addLegend("bottomright", data=data, pal = qpal2, values = ~value,
                   title = paste(legend_title, "</br>SGARs conc. [ng/g wet weight]"),
+                  na.label = "chemicals data not available",
+                  
                   opacity = 1, group = legend_title)
       
     } else {
@@ -411,7 +444,9 @@ map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP"){
   data$Latitude2 <- jitter(data$Latitude, factor = 0.001)
   data$Longitude2 <- jitter(data$Longitude, factor = 0.001)
   
-  
+  data <- data %>%
+    arrange(desc(is.na(SampleValue)), SampleValue)  # highest value last = drawn on top
+    
   map  %>%
     addCircleMarkers(
       data = data,
@@ -427,6 +462,7 @@ map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP"){
         "<b>Unit: </b>", UnitsName, "<br/>",
         "<b>Latitude: </b>", Latitude , "<br/>",
         "<b>Longitude: </b>", Longitude, "<br/>",
+         "Note: some locations of Treatment plants are estimated.<br/>",
         
         sep = ""
       ),
@@ -483,12 +519,14 @@ map_fun_NORMAN_EMPODAT <- function(map, data, fillColor= "blue", legend_title = 
 
 # this is a good horizontal legend: https://stackoverflow.com/questions/60838128/how-to-make-a-leaflet-legend-horizontal
 
-switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds', showHeatmap=FALSE, showPnecRiskmap = FALSE){
+switch_map <- function(m, map_data, input_choice, legend_title='legend', palette_name = 'Reds',
+                       map_options= NULL, showHeatmap=FALSE, showPnecRiskmap = FALSE){
   labFormat_transform <- labelFormat(
     transform = function(x)
       round(exp(x) - 1, 7)
   )
   print(paste0('switch_map', input_choice))
+  print(map_options)
   
   if (input_choice == 'EA water quality GCMS/LCMS data') {
     # Check if the dataset is empty or has no valid data
@@ -522,7 +560,10 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     #   
     } else {
       fillColor = colorNumeric(palette = brewer.pal(9, palette_name),
-                               domain = map_data$log_Concentration)
+                               domain = map_data$log_Concentration
+                               )
+      
+      
       # break_values <- seq(min(map_data$log_Concentration), max(map_data$log_Concentration), length.out = 5)
       
       m = m %>% map_fun_EA_WQ_gcms(
@@ -560,7 +601,9 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     }
     
   } else if (input_choice == "EA water quality GCMS/LCMS data (RISK)") {
-    factpal <- colorFactor(OkabeItoPal, c("below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"), ordered=TRUE)
+    factpal <- colorFactor(OkabeItoPal, c("below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"),
+                           ordered=TRUE,
+                           na.color = "grey70")
     
     m = m %>% 
       map_fun_EA_WQ_gcms(
@@ -573,13 +616,15 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
           legend_title, "<br>", "Risk Quotient (RQ)"
         )),
         position = "bottomright",
-        colors = OkabeItoPal  %>% rev(),
-        labels = c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev()
+        colors = c(OkabeItoPal %>% rev(), "grey70"),   # 6 + 1 = 7
+        labels = c(c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev(), "NA")
         
       )
     
   } else if (input_choice == 'EA pollution inventory 2021') {
     #m = m %>% map_fun_EA_pollution(map_data,fillColor = color_data$RGB[new_id_ii])
+    non_na_vals <- map_data$quantity_released_tons[!is.na(map_data$quantity_released_tons)]
+    
     
     fillColor = colorNumeric(
       palette = brewer.pal(9, palette_name),
@@ -589,6 +634,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_EA_pollution(
       map_data,
       fillColor =  ~ fillColor(log_quantity_released_tons),
+      # cluster_points = map_options$toggle_clustering,
       legend_title = legend_title
     ) %>%
       # addLegend(data = map_data,
@@ -604,14 +650,15 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         data = map_data,
         position = "bottomright",
         pal = fillColor,
-        values = ~ map_data$log_quantity_released_tons,
+        values =  ~ map_data$log_quantity_released_tons,
         title = htmltools::HTML(paste0(legend_title, "<br>", "tonnes")),
         shape = "rect",
         orientation = "horizontal",
         width = 200,
         height = 10,
+        naLabel  = "Below reporting threshold", 
         numberFormat = function(x)
-          format(round(exp(x) - 1, 3), trim = TRUE)
+          format(round(exp(x) - 1, 2), trim = TRUE)
       )
     
     
@@ -837,7 +884,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     fillColor <- colorNumeric(
       palette = brewer.pal(9, palette_name),
       domain = values,
-      na.color = "transparent"
+      na.color = "transparent" #"#CDCDCD" 
     )
 
     m = m %>% map_fun_pesticide(map_data, colors =  fillColor, legend_title = legend_title) %>%
@@ -845,7 +892,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         data = map_data,
         position = "bottomright",
         pal = fillColor,
-        values = values(map_data),
+        values = na.omit(values(map_data)),
         title = htmltools::HTML(paste0(legend_title , "<br>", "[Risk factor]")),
         group = legend_title,
         # na.label = NULL,

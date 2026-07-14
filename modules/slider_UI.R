@@ -2,7 +2,7 @@
 # loaded at start up, be careful with performance, PFAS: 10ms, APIENS 2x10ms
 
 unique_industry_sector <- c("Agriculture","Biowaste Treatment","Cement and Minerals",
-                            "Chemicals","combustion","Combustion","EfW","Food & Drink",
+                            "Chemicals","Combustion","EfW","Food & Drink",
                             "Hazardous Waste","Landfill","Metals","Metals Recycling",
                             "No Far Sector","Non-Hazardous & Inert","Nuclear",
                             "Oil and Gas","Paper and textiles",
@@ -22,7 +22,7 @@ unique_EMPODAT_varnames <- data_process_NORMAN_EMPODAT()[['unique_varnames']]
 
 ea_gcms_choices <-
   list(`Pharmaceuticals` = list( "Diphenyl ether","Ibuprofen", "Ketamine","Mirtazapine", "Phenanthrene"), #"Benzothiazole",
-     `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole (Terbuconazole)", "Thiabendazole"),
+     `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole"="Tebuconazole (Terbuconazole)", "Thiabendazole"),
      `Herbicides` = list("Atrazine","Diuron","Metolachlor","Simazine"),
      `Insecticides` = list("Diflufenican", "Fipronil", "Imidacloprid"),
      `Others` = list("Caffeine","Cocaine", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol"))
@@ -36,7 +36,9 @@ ea_pollution_sliders <- function(id) {
     
     selectInput(NS(id,"IndustrySector"), "Choose Industry Sector:",
                 unique_industry_sector
-    )
+    ),
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE),
+    
   )
 }
 
@@ -185,6 +187,21 @@ pfas_sliders <- function(id) {
 
 rain_sliders <- function(id) {
   tagList(
+    tags$head(tags$style(HTML(" 
+
+  .irs--shiny .irs-bar, 
+
+  .irs--shiny .irs-bar-edge { 
+
+    background: transparent; 
+
+    border: none; 
+
+    box-shadow: none; 
+
+  } 
+
+"))) , 
     sliderInput(NS(id,"year_slider"), "Select Year:",
                 min = 2000, max = 2023, 
                 value = 2023, 
@@ -263,6 +280,7 @@ IYR_sliders <- function(id) {
 
 pesticide_risk_sliders <- function(id) {
   tagList(
+    
     selectInput(NS(id,"insect_choice"), "Choose insect species:",
                 choices =list.dirs('datasets/pesticide_risk_to_insects/data',
                                    full.names = FALSE, recursive = FALSE),

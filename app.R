@@ -96,7 +96,7 @@ ui <- page_fillable(
   tags$html(lang = "en"), # modification for accessibility
   tags$head(tags$title("Chemical Pollution and the Environment")), # modification for accessibility
   navset_underline(
-    nav_panel(title = "Spatial Trends", 
+    nav_panel(title = "Spatial Trends",
               card(
                 #card_header("Card with sidebar"),
                 layout_sidebar(
@@ -114,7 +114,7 @@ ui <- page_fillable(
                                     input_task_button("insertBtn", "Add dataset",width = '100%', class = "btn-primary"),p(),
                                     input_task_button("removeBtn", "Remove dataset", class = "btn-warning",width = '100%'),p(),
                                     input_task_button("updateBtn", "Update map", class = "btn-success",width = '100%')   # tentative: testing 16/2/2026, input_task_button vs actionButton
-                            ),
+                  ),
                   navset_card_underline(
                     # title = "Visualizations",
                     nav_spacer(),
@@ -175,62 +175,68 @@ ui <- page_fillable(
                     )
                     , full_screen = TRUE
                   )
-                 )
+                )
               )),
     nav_panel(title = "Indicator", 
-        layout_columns(
-          # col_widths = c(4, 4,4),
-          col_widths = breakpoints(
-            sm = 12, # Stacks on small
-            md = 12, # Stacks on medium
-            lg = c(3, 5, 4)   # Side-by-side on large
-          ),
-          card(
-            selectInput("RegtionOption", "Choose indicator to display:",
-                        c('Chemical Pollution Indicator', 
-                          # 'Mean Pharceuticals', 
-                          # 'Mean metals', 
-                          'Mean Phenanthrene by region'  )),
-            HTML('<p align="center" style="font-weight: bold;color:orange">For illustration only.</p>'),
-            leafletOutput('regionMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9")#,
-            # class = "border"
-            , full_screen = TRUE),
-          card(
-            fluidRow(
-              column(width = 6, 
-                     selectInput('countryInd', 'Choose NUTS1 region:', 
-                                 c(setNames(NUTS_sf$nuts118cd, NUTS_sf$nuts118nm), "England" = "ENG"),),
-                     
-              ),
-              column(width = 6, 
-                     selectInput('compartmentInd', 'Choose Compartment:', c('Terrestrial','Freshwater','Marine','Air')),
+              layout_columns(
+                # col_widths = c(4, 4,4),
+                col_widths = breakpoints(
+                  sm = 12, # Stacks on small
+                  md = 12, # Stacks on medium
+                  lg = c(3, 5, 4)   # Side-by-side on large
+                ),
+                card(
+                  selectInput("RegtionOption", "Choose indicator to display:",
+                              c('Chemical Pollution Indicator', 
+                                # 'Mean Pharceuticals', 
+                                # 'Mean metals', 
+                                'Mean Phenanthrene by region'  )),
+                  #HTML('<p align="center" style="font-weight: bold;color:orange">For illustration only.</p>'),
+                  leafletOutput('regionMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9")#,
+                  # class = "border"
+                  , accordion(open = FALSE,
+                              accordion_panel(
+                                "Score weights:",
+                                verbatimTextOutput("Output_score_weights") 
+                              )
+                  )
+                  , full_screen = TRUE),
+                card(
+                  fluidRow(
+                    column(width = 6, 
+                           selectInput('countryInd', 'Choose NUTS1 region:', 
+                                       c(setNames(NUTS_sf$nuts118cd, NUTS_sf$nuts118nm), "England" = "ENG"),),
+                           
+                    ),
+                    column(width = 6, 
+                           selectInput('compartmentInd', 'Choose Compartment:', c('Terrestrial','Freshwater','Marine','Air')),
+                    )
+                  ),
+                  plotlyOutput("barplot_indicator")  %>% withSpinner(type=5,color = "#A9A9A9"), 
+                  plotlyOutput("barplot_pressures")#,
+                  #class = "border"
+                  , full_screen = TRUE),
+                card(
+                  selectInput('factor_type', 'Choose factor:', "Vet medicine", "Vet. medicine"),
+                  # h4("Covergence of evidence"),
+                  #p("The number of unhealthy vet med sub-factors: 2"),
+                  value_box(
+                    title = "The number of above threshold vet med sub-factors",
+                    value = textOutput("out_text_unhealthy"), # container = h2
+                    showcase = bsicons::bs_icon("x-circle-fill"),
+                    theme = value_box_theme(bg = "#fddce2", fg = "#b12051"),
+                    #theme = value_box_theme(bg = "#F7D9BC", fg = "#ef8a62"),
+                    # height = "130px",
+                    class = "border"
+                  ),
+                  HTML(
+                    '<p align="center" style="font-weight: bold;color:orange">Click on chemicals to view statistics.</p>'
+                  ),
+                  dataTableOutput('subfactor_table')  %>% withSpinner(type=5,color = "#A9A9A9") #,
+                  #class = "border"
+                  , full_screen = TRUE)
+                
               )
-            ),
-            plotlyOutput("barplot_indicator")  %>% withSpinner(type=5,color = "#A9A9A9"), 
-            plotlyOutput("barplot_pressures")#,
-            #class = "border"
-            , full_screen = TRUE),
-          card(
-            selectInput('factor_type', 'Choose factor:', "Vet medicine", "Vet. medicine"),
-            # h4("Covergence of evidence"),
-            #p("The number of unhealthy vet med sub-factors: 2"),
-            value_box(
-              title = "The number of above threshold vet med sub-factors",
-              value = textOutput("out_text_unhealthy"), # container = h2
-              showcase = bsicons::bs_icon("x-circle-fill"),
-              theme = value_box_theme(bg = "#fddce2", fg = "#b12051"),
-              #theme = value_box_theme(bg = "#F7D9BC", fg = "#ef8a62"),
-              # height = "130px",
-              class = "border"
-            ),
-            HTML(
-              '<p align="center" style="font-weight: bold;color:orange">Click on chemicals to view statistics.</p>'
-            ),
-            dataTableOutput('subfactor_table')  %>% withSpinner(type=5,color = "#A9A9A9") #,
-            #class = "border"
-            , full_screen = TRUE)
-          
-        )
     ),
     
     # nav_panel(title = "Time series",
@@ -301,28 +307,28 @@ ui <- page_fillable(
               p('The follow causal loop diagrams were developed as part of the case study reports for the tool.'),
               navset_card_underline(
                 nav_panel("England PFAS",
-                    HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[7,586,176,0.33,%22FIREFOAMS%22,5],[10,761,659,0.83,%22DISTRIBUTION%22,4],[12,676,482,0.5,%22APPLICATION%22,1],[13,757,816,1,%22PFAS%2520PRODUCTION%22,0],[14,861,519,0.66,%22MANUFACTURING%22,2],[15,1009,416,0,%22CLOTHING%22,2],[16,964,650,0.33,%22DOMESTIC%2520PRODUCTS%22,2],[17,1119,549,0.5,%22VEHICLES%22,2],[18,853,338,0,%22INDUSTRY%22,2],[19,461,46,0.33,%22INDUSTRIAL%2520SITES%22,5],[20,805,57,0.33,%22AIRPORTS%22,5],[21,373,213,0.33,%22WILDFIRES%22,5],[22,13,657,0,%22WWTP%22,1],[23,463,452,0,%22SLUDGE%2520TO%2520LAND%22,0],[24,1420,447,0.33,%22PRODUCT%2520USE%22,0],[25,1342,107,0.66,%22RUN%2520OFF%22,0],[26,265,366,0,%22PESTICIDES%22,0],[27,378,792,0.5,%22TO%2520WASTE%2520WATER%22,0],[28,100,483,0,%22TO%2520SOIL%22,0],[29,183,234,0,%22TO%2520GROUND%2520WATER%22,0],[30,253,75,0,%22TO%2520AIR%22,0],[31,1310,817,0.5,%22TO%2520LANDFILL%22,0],[33,49,305,0.33,%22soil%2520fauna%22,3],[34,-13,12,0.33,%22birds%22,3],[35,8,105,0.33,%22terrestrial%2520wildlife%22,3],[36,185,731,0.33,%22aquatic%2520wildlife%22,3],[37,870,172,0.33,%22terrestrial%2520animals%22,3],[38,313,636,0.33,%22vegetation%22,3],[39,1009,100,0.33,%22man%22,3],[40,62,856,0.33,%22freshwaters%22,3],[41,255,854,0.33,%22marine%22,3]],[[13,10,-31,1,0],[10,14,31,1,0],[10,12,-46,1,0],[14,18,20,1,0],[14,15,-15,1,0],[14,16,10,1,0],[14,17,9,1,0],[7,19,16,1,0],[7,21,-37,1,0],[7,20,-23,1,0],[12,7,24,1,0],[12,26,-37,1,0],[12,23,-46,1,0],[22,23,-36,1,0],[18,25,-24,1,0],[16,24,6,1,0],[17,25,19,1,0],[24,25,76,1,0],[14,25,-31,1,0],[18,25,42,1,0],[15,25,-41,1,0],[25,27,298,1,0],[18,27,-131,1,0],[27,22,161,1,0],[23,27,-43,1,0],[16,27,37,1,0],[17,27,210,1,0],[14,27,-33,1,0],[24,27,68,1,0],[12,27,65,1,0],[21,30,-34,1,0],[19,30,-29,1,0],[20,30,-88,1,0],[26,29,41,1,0],[26,28,-39,1,0],[23,28,-15,1,0],[23,29,-50,1,0],[21,28,137,1,0],[20,28,59,1,0],[19,28,148,1,0],[15,30,-69,1,0],[17,30,-74,1,0],[16,31,-48,1,0],[17,31,32,1,0],[15,31,186,1,0],[18,31,227,1,0],[31,29,126,1,0],[31,27,120,-1,0],[28,33,12,-1,0],[33,35,14,-1,0],[33,34,-9,-1,0],[33,35,-29,-1,0],[34,35,23,-1,0],[35,34,6,-1,0],[36,34,58,-1,0],[38,35,14,-1,0],[38,34,65,-1,0],[38,37,-64,-1,0],[38,39,142,-1,0],[37,39,-29,-1,0],[30,39,102,-1,0],[30,37,21,-1,0],[30,34,-22,-1,0],[30,35,24,-1,0],[22,40,55,-1,0],[40,41,10,-1,0],[40,36,20,-1,0],[41,36,-6,-1,0]],[],41%5D"></iframe>'),
-                    p('')
+                          HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[7,586,176,0.33,%22FIREFOAMS%22,5],[10,761,659,0.83,%22DISTRIBUTION%22,4],[12,676,482,0.5,%22APPLICATION%22,1],[13,757,816,1,%22PFAS%2520PRODUCTION%22,0],[14,861,519,0.66,%22MANUFACTURING%22,2],[15,1009,416,0,%22CLOTHING%22,2],[16,964,650,0.33,%22DOMESTIC%2520PRODUCTS%22,2],[17,1119,549,0.5,%22VEHICLES%22,2],[18,853,338,0,%22INDUSTRY%22,2],[19,461,46,0.33,%22INDUSTRIAL%2520SITES%22,5],[20,805,57,0.33,%22AIRPORTS%22,5],[21,373,213,0.33,%22WILDFIRES%22,5],[22,13,657,0,%22WWTP%22,1],[23,463,452,0,%22SLUDGE%2520TO%2520LAND%22,0],[24,1420,447,0.33,%22PRODUCT%2520USE%22,0],[25,1342,107,0.66,%22RUN%2520OFF%22,0],[26,265,366,0,%22PESTICIDES%22,0],[27,378,792,0.5,%22TO%2520WASTE%2520WATER%22,0],[28,100,483,0,%22TO%2520SOIL%22,0],[29,183,234,0,%22TO%2520GROUND%2520WATER%22,0],[30,253,75,0,%22TO%2520AIR%22,0],[31,1310,817,0.5,%22TO%2520LANDFILL%22,0],[33,49,305,0.33,%22soil%2520fauna%22,3],[34,-13,12,0.33,%22birds%22,3],[35,8,105,0.33,%22terrestrial%2520wildlife%22,3],[36,185,731,0.33,%22aquatic%2520wildlife%22,3],[37,870,172,0.33,%22terrestrial%2520animals%22,3],[38,313,636,0.33,%22vegetation%22,3],[39,1009,100,0.33,%22man%22,3],[40,62,856,0.33,%22freshwaters%22,3],[41,255,854,0.33,%22marine%22,3]],[[13,10,-31,1,0],[10,14,31,1,0],[10,12,-46,1,0],[14,18,20,1,0],[14,15,-15,1,0],[14,16,10,1,0],[14,17,9,1,0],[7,19,16,1,0],[7,21,-37,1,0],[7,20,-23,1,0],[12,7,24,1,0],[12,26,-37,1,0],[12,23,-46,1,0],[22,23,-36,1,0],[18,25,-24,1,0],[16,24,6,1,0],[17,25,19,1,0],[24,25,76,1,0],[14,25,-31,1,0],[18,25,42,1,0],[15,25,-41,1,0],[25,27,298,1,0],[18,27,-131,1,0],[27,22,161,1,0],[23,27,-43,1,0],[16,27,37,1,0],[17,27,210,1,0],[14,27,-33,1,0],[24,27,68,1,0],[12,27,65,1,0],[21,30,-34,1,0],[19,30,-29,1,0],[20,30,-88,1,0],[26,29,41,1,0],[26,28,-39,1,0],[23,28,-15,1,0],[23,29,-50,1,0],[21,28,137,1,0],[20,28,59,1,0],[19,28,148,1,0],[15,30,-69,1,0],[17,30,-74,1,0],[16,31,-48,1,0],[17,31,32,1,0],[15,31,186,1,0],[18,31,227,1,0],[31,29,126,1,0],[31,27,120,-1,0],[28,33,12,-1,0],[33,35,14,-1,0],[33,34,-9,-1,0],[33,35,-29,-1,0],[34,35,23,-1,0],[35,34,6,-1,0],[36,34,58,-1,0],[38,35,14,-1,0],[38,34,65,-1,0],[38,37,-64,-1,0],[38,39,142,-1,0],[37,39,-29,-1,0],[30,39,102,-1,0],[30,37,21,-1,0],[30,34,-22,-1,0],[30,35,24,-1,0],[22,40,55,-1,0],[40,41,10,-1,0],[40,36,20,-1,0],[41,36,-6,-1,0]],[],41%5D"></iframe>'),
+                          p('')
                 ),
                 nav_panel("PBMS SGARs",
-                    HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[4,-12,170,1,%22SGAR%2520source%22,0],[5,480,233,0.33,%22mice%22,3],[6,892,265,0.5,%22rats%22,1],[7,1318,717,0.5,%22terrestrial%2520predator%22,0],[8,1350,122,0.5,%22scavenging%2520raptor%22,0],[10,522,587,0.33,%22passerine%2520birds%22,3],[11,851,537,0.33,%22corvids%22,1],[12,1419,428,0.5,%22prey%2520eating%2520raptor%22,0],[13,187,456,0.33,%22insects%22,3],[15,34,362,0.33,%22bacteria%22,3]],[[4,6,-53,1,0],[4,5,-21,1,0],[4,7,-36,1,0],[5,8,-72,1,0],[5,7,-49,1,0],[6,7,107,1,0],[8,7,-135,1,0],[10,8,261,1,0],[10,7,55,1,0],[5,11,35,1,0],[6,11,28,1,0],[11,7,-75,1,0],[11,8,-213,1,0],[5,12,-90,1,0],[4,13,12,1,0],[13,10,27,1,0],[13,5,59,1,0],[6,12,185,1,0],[10,12,-67,1,0],[4,15,-33,1,0],[15,13,-54,1,0],[12,7,74,1,0],[6,7,444,1,0],[6,8,-300,1,0],[6,11,-26,1,0],[13,6,-68,1,0],[13,11,-251,1,0]],[[549,804,%22Possible%2520uptake%2520route%2520of%2520Second%2520Generation%2520Anticoagulant%2520Rodenticides%2520(SGARs)%2520by%2520predators%22]],15%5D"></iframe>'),
-                    p()
+                          HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[4,-12,170,1,%22SGAR%2520source%22,0],[5,480,233,0.33,%22mice%22,3],[6,892,265,0.5,%22rats%22,1],[7,1318,717,0.5,%22terrestrial%2520predator%22,0],[8,1350,122,0.5,%22scavenging%2520raptor%22,0],[10,522,587,0.33,%22passerine%2520birds%22,3],[11,851,537,0.33,%22corvids%22,1],[12,1419,428,0.5,%22prey%2520eating%2520raptor%22,0],[13,187,456,0.33,%22insects%22,3],[15,34,362,0.33,%22bacteria%22,3]],[[4,6,-53,1,0],[4,5,-21,1,0],[4,7,-36,1,0],[5,8,-72,1,0],[5,7,-49,1,0],[6,7,107,1,0],[8,7,-135,1,0],[10,8,261,1,0],[10,7,55,1,0],[5,11,35,1,0],[6,11,28,1,0],[11,7,-75,1,0],[11,8,-213,1,0],[5,12,-90,1,0],[4,13,12,1,0],[13,10,27,1,0],[13,5,59,1,0],[6,12,185,1,0],[10,12,-67,1,0],[4,15,-33,1,0],[15,13,-54,1,0],[12,7,74,1,0],[6,7,444,1,0],[6,8,-300,1,0],[6,11,-26,1,0],[13,6,-68,1,0],[13,11,-251,1,0]],[[549,804,%22Possible%2520uptake%2520route%2520of%2520Second%2520Generation%2520Anticoagulant%2520Rodenticides%2520(SGARs)%2520by%2520predators%22]],15%5D"></iframe>'),
+                          p()
                 ),
                 nav_panel("PBMS metals",
-                  HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[4,741,329,0.5,%22Rain%22,4],[5,1067,153,0.5,%22soil%22,3],[6,505,116,0.5,%22Air%22,4],[7,933,768,0.5,%22Rivers%22,4],[8,1126,751,0.5,%22Lakes%22,4],[9,1339,726,0.5,%22Sea%22,4],[10,1403,191,0,%22terrestrial%22,1],[12,395,768,0,%22Marine%22,1],[13,483,369,0,%22Avian%22,1],[14,17,436,0,%22Freshwater%22,1],[15,1604,319,0,%22Humans%22,1],[16,788,-63,1,%22Mining%22,0],[17,1416,-75,0.5,%22Spills%252Fleaks%22,0],[18,-17,-4,0.83,%22Combustion%22,0],[19,501,-109,0.66,%22Industry%22,0],[20,1190,-114,0.83,%22Waste%2520disposal%22,0],[21,200,9,0.66,%22Transport%22,0]],[[6,5,56,1,0],[4,5,25,1,0],[6,4,18,1,0],[4,7,-13,1,0],[7,8,-3,1,0],[8,9,58,1,0],[5,7,18,1,0],[5,8,18,1,0],[5,9,46,1,0],[5,10,78,1,0],[6,13,-47,1,0],[4,13,36,1,0],[5,13,841,1,0],[9,12,43,1,0],[7,14,21,1,0],[8,14,36,1,0],[12,13,147,1,0],[14,13,33,1,0],[13,15,-507,1,0],[14,15,-184,1,0],[12,15,-25,1,0],[10,15,78,1,0],[16,5,-63,1,0],[17,5,25,1,0],[18,6,-41,1,0],[21,6,14,1,0],[19,6,23,1,0],[19,5,-46,1,0],[16,6,-71,1,0],[20,5,-21,1,0],[20,6,-75,1,0],[18,5,158,1,0],[21,5,242,1,0],[10,13,122,1,0],[18,4,-87,1,0],[21,7,-215,1,0],[17,7,41,1,0],[16,7,34,1,0]],[[-147,733,%22Metal%2520bioaccumulation%22]],21%5D"></iframe>'),
-                  p()
+                          HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[4,741,329,0.5,%22Rain%22,4],[5,1067,153,0.5,%22soil%22,3],[6,505,116,0.5,%22Air%22,4],[7,933,768,0.5,%22Rivers%22,4],[8,1126,751,0.5,%22Lakes%22,4],[9,1339,726,0.5,%22Sea%22,4],[10,1403,191,0,%22terrestrial%22,1],[12,395,768,0,%22Marine%22,1],[13,483,369,0,%22Avian%22,1],[14,17,436,0,%22Freshwater%22,1],[15,1604,319,0,%22Humans%22,1],[16,788,-63,1,%22Mining%22,0],[17,1416,-75,0.5,%22Spills%252Fleaks%22,0],[18,-17,-4,0.83,%22Combustion%22,0],[19,501,-109,0.66,%22Industry%22,0],[20,1190,-114,0.83,%22Waste%2520disposal%22,0],[21,200,9,0.66,%22Transport%22,0]],[[6,5,56,1,0],[4,5,25,1,0],[6,4,18,1,0],[4,7,-13,1,0],[7,8,-3,1,0],[8,9,58,1,0],[5,7,18,1,0],[5,8,18,1,0],[5,9,46,1,0],[5,10,78,1,0],[6,13,-47,1,0],[4,13,36,1,0],[5,13,841,1,0],[9,12,43,1,0],[7,14,21,1,0],[8,14,36,1,0],[12,13,147,1,0],[14,13,33,1,0],[13,15,-507,1,0],[14,15,-184,1,0],[12,15,-25,1,0],[10,15,78,1,0],[16,5,-63,1,0],[17,5,25,1,0],[18,6,-41,1,0],[21,6,14,1,0],[19,6,23,1,0],[19,5,-46,1,0],[16,6,-71,1,0],[20,5,-21,1,0],[20,6,-75,1,0],[18,5,158,1,0],[21,5,242,1,0],[10,13,122,1,0],[18,4,-87,1,0],[21,7,-215,1,0],[17,7,41,1,0],[16,7,34,1,0]],[[-147,733,%22Metal%2520bioaccumulation%22]],21%5D"></iframe>'),
+                          p()
                 ), 
                 nav_panel("Scotland Glyposate",
                           p('Note there is currenlty no data in the tool that directly contributes to this case study.')
                           
-                          ),
+                ),
                 nav_panel("NI Lough Neagh",
                           p('Note there is currenlty no data in the tool that directly contributes to this case study.')
-                          ),
+                ),
                 nav_panel("Fipronil", 
                           HTML('<iframe width="1000" height="880" frameborder="0" src="https://ncase.me/loopy/v1.1/?embed=1&data=[[[1,905,379,0.5,%22Rivers%22,4],[2,409,370,1,%22cats%2520and%2520dogs%22,0],[3,385,880,0.16,%22Farming%22,0],[4,1277,648,1,%22Bees%22,5],[5,904,628,0.33,%22crops%22,4],[6,1292,394,0.66,%22Aquatic%2520life%22,5],[7,396,600,0.5,%22handwashing%22,0],[9,616,573,0.5,%22wwTW%22,4]],[[5,4,46,1,0],[2,1,49,1,0],[3,7,-14,1,0],[2,7,17,1,0],[1,6,15,1,0],[3,5,-26,1,0],[3,1,-57,1,0],[7,9,-50,1,0],[9,1,-37,1,0]],[[382,978,%22Banned%22],[1131,758,%22https%253A%252F%252Fec.europa.eu%252Fcommission%252Fpresscorner%252Fdetail%252Fen%252Fip_13_708%22],[358,465,%22For%2520spot-on%2520flea%2520treatments%22],[872,305,%22Fipronil%2520was%2520detected%2520in%252098%2525%2520of%2520freshwater%2520samples%2520(2016-2018).%22],[711,464,%22https%253A%252F%252Fdoi.org%252F10.1016%252Fj.scitotenv.2020.143560%22],[709,493,%22https%253A%252F%252Fdoi.org%252F10.1016%252Fj.scitotenv.2024.170175%22]],9%5D"></iframe>')),
               )
-              ),
+    ),
     nav_spacer(),
     nav_item(link_guide),
     nav_menu(
@@ -380,8 +386,8 @@ server <- function(input, output, session) {
                                    `Dataset name`)) %>%
     select(-`Link to dataset`) %>%
     rename_with(~str_c("Case study:", .), all_of(colnames(.)[9:13]))
-
-
+  
+  
   output$catalogueDT = renderDT({
     datatable(data_catalogue, escape = FALSE , class = 'cell-border stripe', rownames = F,
               caption = 'Table 1: List of datasets included in the visual tool.')
@@ -447,7 +453,7 @@ server <- function(input, output, session) {
       ui_handler(handler_list)  # important: update the reactive list
       inserted_ids <<- c(inserted_ids, new_id)
       print(handler_list)
-
+      
       
       
       ## Append data
@@ -471,25 +477,25 @@ server <- function(input, output, session) {
   # observer to remove UI
   observeEvent(input$removeBtn, {
     if (length(inserted_ids) >0) {
-    print(inserted_ids)
-    removeUI(
-      ## pass in appropriate div id, for data selector
-      selector = paste0('#', inserted_ids[length(inserted_ids)])
-    )
-    removeUI( 
-      ## pass in appropriate div id, for data table
-      selector = paste0('#',inserted_ids[length(inserted_ids)], '_table')
-    )
-    removeUI( 
-      ## pass in appropriate div id, for data plots
-      selector = paste0('#',inserted_ids[length(inserted_ids)], '_plots')
-    )
-    
-    # remove associated datasets
-    reactive_df[[inserted_ids[length(inserted_ids)]]] <- NULL
-    
-    # remove the id from list
-    inserted_ids <<- inserted_ids[-length(inserted_ids)]
+      print(inserted_ids)
+      removeUI(
+        ## pass in appropriate div id, for data selector
+        selector = paste0('#', inserted_ids[length(inserted_ids)])
+      )
+      removeUI( 
+        ## pass in appropriate div id, for data table
+        selector = paste0('#',inserted_ids[length(inserted_ids)], '_table')
+      )
+      removeUI( 
+        ## pass in appropriate div id, for data plots
+        selector = paste0('#',inserted_ids[length(inserted_ids)], '_plots')
+      )
+      
+      # remove associated datasets
+      reactive_df[[inserted_ids[length(inserted_ids)]]] <- NULL
+      
+      # remove the id from list
+      inserted_ids <<- inserted_ids[-length(inserted_ids)]
     }  else {
       shiny::showNotification('No more datasets to delete.',type = 'warning')
     }
@@ -609,7 +615,7 @@ server <- function(input, output, session) {
   # ####################### end ########################
   
   ### leaflet map for point data #####
-  map = leaflet() %>% 
+  map = leaflet() %>%
     addTiles(group = "OpenStreetMap") %>%
     addProviderTiles(providers$Esri.WorldImagery,                  # try Esri. and see what other options are available.
                      group = "ESRI World Imagery",
@@ -656,29 +662,30 @@ server <- function(input, output, session) {
       group = "LCM 2021 1km dominant target"
     ) %>%
     hideGroup(c("LCM 2021 1km dominant target", "IHU", "NASA Earth at Night 2012")) %>%
-    setView(-3.0, 55.5, zoom = 6) 
-  
+    setView(-3.0, 55.5, zoom = 6)
+
   output$myMap = renderLeaflet({map})
-  
+
   observeEvent(input$updateBtn, {
     print('press update button')
     showNotification("Map updating...", type = "warning",duration = 5.0)
-    
-   
-    
-    m = leafletProxy("myMap") %>% 
-      removeLayersControl() %>% 
-      clearShapes() %>% 
-      clearControls() %>% 
+
+
+
+    m = leafletProxy("myMap") %>%
+      removeLayersControl() %>%
+      clearShapes() %>%
+      clearControls() %>%
       clearMarkers() %>%
       clearHeatmap() %>%
-      clearImages() #%>% 
-      
-      # leafem::addGeotiff(file = 'datasets/empty_raster.tif',
-      #                    opacity = 0.0) # empty raseter to clear addGeotiff, doesn't work
-    
+      clearImages() %>%
+      clearMarkerClusters() # more robust: clearGroup("group1")
+
+    # leafem::addGeotiff(file = 'datasets/empty_raster.tif',
+    #                    opacity = 0.0) # empty raseter to clear addGeotiff, doesn't work
+
     #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
-    
+
     # unpack the reactive list
     # outstanding issues: seems to not shrink in legnth after removing datasets--use with care
     df_list <- lapply(df_handler(), function(handle) {
@@ -687,10 +694,10 @@ server <- function(input, output, session) {
     handler_list <- lapply(ui_handler(), function(handle) {
       handle()
     })
-    
-    
-    
-    
+
+
+
+
     #somewhere in your reactive server code
     # list_of_inputs <- reactiveValuesToList(input)
     # print("list_of_inputs:")
@@ -700,30 +707,30 @@ server <- function(input, output, session) {
     #   list_of_inputs <- reactiveValuesToList(input)
     #   list_of_inputs
     # })
-    
+
     getCurrentSelections <- eventReactive(input$updateBtn, {
       # Extract only inputs that match the current pattern (if they are being dynamically created)
       list_of_inputs <- reactiveValuesToList(input)
       list_of_inputs
     })
-    
+
     # print("list_of_inputs reactive:  ")
     # print(getCurrentSelections())
-    
-    
-    
+
+
+
     if (length(inserted_ids) > 0) {
       withProgress(message = 'Making plot', value = 0, {  # initialize counter
-        
+
         for (new_id_ii in 1:length(inserted_ids)){
-          
+
           new_id = paste("dat1_ctrl", new_id_ii , sep = "_")
-          
+
           # # unpack list_of_inputs to create legend
           # list_of_inputs <- getCurrentSelections()
           # inputs_for_legend <- list_of_inputs[grep(new_id, names(list_of_inputs) )]
           # print(c("inputs_for_legend:   ", inputs_for_legend))
-          # 
+          #
           # # # concatenate year slider inputs with hyphen
           # # legend_items <- c()
           # # for (item in inputs_for_legend) {
@@ -733,27 +740,27 @@ server <- function(input, output, session) {
           # #     legend_items <- c(legend_items, item)
           # #   }
           # # }
-          # 
-          # 
+          #
+          #
           # for (name in names(inputs_for_legend)) {
-          #   
-          # 
+          #
+          #
           #   # if else logic to say if datachoice = PFAS only use these specific inputs
           #   if (grepl("data_choice", name )) {
-          #     
+          #
           #     print(c("Name: ", name))
           #     print(c("inputs_for_legend[[name]]", inputs_for_legend[[name]]))
-          #     
+          #
           #     if (inputs_for_legend[[name]] == "EA pollution inventory 2021") {
           #       # input_calls <- extract_input_calls(ea_pollution_sliders)
           #       Industry_Sector <- paste0(new_id, "-IndustrySector")
           #       legend_string <- inputs_for_legend[[Industry_Sector]]
-          # 
+          #
           #       } else if (inputs_for_legend[[name]] == "EA water quality GCMS/LCMS data") {
           #         paste0(new_id, "var_biota")
           #         legend_string <- paste(inputs_for_legend$var_biota, inputs_for_legend$var_map_sgl, inputs_for_legend$year_slider, sep = "<br>")
-          #         
-          #         
+          #
+          #
           #       } else if (item == "Predatory Bird Monitoring Scheme") {
           #       } else if (item == "PFAS") {
           #       } else if (item == "HadUK-Grid Annual Rainfall") {
@@ -764,33 +771,33 @@ server <- function(input, output, session) {
           #       }
           #   }
           # }
-          
+
           # legend_string <- paste(unlist(legend_string), collapse = "<br>")
-          
+
           legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]])
           # legend_title= paste0(as.character(new_id_ii) ,". ", handler_list[[new_id]], "<br>", legend_string)
-          
-          
+
+
           single_color_sequential_palettes <- c("Reds", "Blues", "Greens", "Purples", "Oranges", "Greys")
-          
+
           ## New function
-          m = switch_map(m = m, 
-               map_data = df_list[[new_id]], 
-               input_choice = handler_list[[new_id]],
-               legend_title=legend_title,
-               # legend_title = new_handler['legend_choices'],
-               showHeatmap = input$heatmap, 
-               # showPnecRiskmap= input$PnecRiskmap, 
-               
-               palette_name =  single_color_sequential_palettes[new_id_ii])
-          
+          m = switch_map(m = m,
+                         map_data = df_list[[new_id]],
+                         input_choice = handler_list[[new_id]],
+                         legend_title=legend_title,
+                         # legend_title = new_handler['legend_choices'],
+                         showHeatmap = input$heatmap,
+                         # showPnecRiskmap= input$PnecRiskmap,
+
+                         palette_name =  single_color_sequential_palettes[new_id_ii])
+
           #### start add dataset: it works but deprecating, replaced by switch_map
-          
-          # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))         
-          
-          
+
+          # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
+
+
           # if (handler_list[[new_id]] == 'EA water quality GCMS/LCMS data') {
-          #   
+          #
           #   # Check if the dataset is empty or has no valid data
           #   if (nrow(df_list[[new_id]]) == 0 || all(is.na(df_list[[new_id]]$log_Concentration))) {
           #     dummy_color <- colorNumeric(palette = "Greys", domain = c(0, 1))
@@ -803,9 +810,9 @@ server <- function(input, output, session) {
           #       opacity = 1
           #     )
           #   } else {
-          #     
+          #
           #     fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$log_Concentration)
-          #     
+          #
           #     m = m %>% map_fun_EA_WQ_gcms(df_list[[new_id]],
           #                                  fillColor =  ~fillColor(log_Concentration),
           #                                  legend_title= legend_title) %>%
@@ -818,12 +825,12 @@ server <- function(input, output, session) {
           #                 group = legend_title,
           #                 labFormat = labFormat_transform)
           #   }
-          #   
+          #
           # } else if (handler_list[[new_id]] == 'EA pollution inventory 2021') {
           #   #m = m %>% map_fun_EA_pollution(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
-          #   
+          #
           #   fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$log_quantity_released_tons)
-          #   
+          #
           #   m = m %>% map_fun_EA_pollution(df_list[[new_id]],
           #                                  fillColor =  ~fillColor(log_quantity_released_tons),
           #                                  legend_title= legend_title) %>%
@@ -835,10 +842,10 @@ server <- function(input, output, session) {
           #               opacity = 1,
           #               group = legend_title,
           #               labFormat = labFormat_transform)
-          #   
-          #   
+          #
+          #
           # } else if (handler_list[[new_id]] == 'Predatory Bird Monitoring Scheme') {
-          #   
+          #
           #   # added a trycatch for when there is no data for the selection
           #   m <- tryCatch({m %>% map_fun_pbms(df_list[[new_id]],
           #                                     colorPalette = single_color_sequential_palettes[new_id_ii],
@@ -848,22 +855,22 @@ server <- function(input, output, session) {
           #     dummy_palette <- colorNumeric(palette = "Greys", domain = c(0, 0)) # Dummy palette
           #     # add notification
           #     showNotification("No data available for this selection.", type = "error", duration = 5)
-          #     
+          #
           #     # Add dummy legend with message
           #     m %>% addLegend("bottomright", pal = dummy_palette, values = c(0, 0),
           #                     title = paste(legend_title, "</br>No data available for this selection"),
           #                     opacity = 1)
           #   })
-          #   
+          #
           # } else if (handler_list[[new_id]] == 'PFAS') {
-          #   
+          #
           #   # Check if the dataset is empty or has no valid data
           #   if (nrow(df_list[[new_id]]) == 0 || all(is.na(df_list[[new_id]]$transform_value))) {
-          #     
+          #
           #     dummy_palette <- colorNumeric(palette = "Greys", domain = c(0, 0)) # Dummy palette
-          #     
+          #
           #     showNotification("No data available for this selection.", type = "error", duration = 5)
-          #     
+          #
           #     # Add a message in the legend indicating no data
           #     m = m %>% addLegend(
           #       position = "bottomright",
@@ -875,18 +882,18 @@ server <- function(input, output, session) {
           #   } else {
           #     #m = m %>% map_fun_pfas(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
           #     # labFormat_transform = labelFormat(transform = function(x) round(exp(x) - 1, 1))
-          #     
+          #
           #     selected_palette <- single_color_sequential_palettes[new_id_ii]
-          #     
+          #
           #     fillColor = colorNumeric(palette = brewer.pal(9, selected_palette), domain = df_list[[new_id]]$transform_value)
-          #     
+          #
           #     gradient_colors <- colorNumeric(
           #       palette = brewer.pal(9, selected_palette),
           #       domain = df_list[[new_id]]$transform_value
           #     )(seq(min(df_list[[new_id]]$transform_value, na.rm = TRUE),
           #           max(df_list[[new_id]]$transform_value, na.rm = TRUE),
           #           length.out = 256))
-          #     
+          #
           #     m = m %>% map_fun_pfas(df_list[[new_id]],
           #                            fillColor = if (input$heatmap) gradient_colors else fillColor,  # Use gradient_colors in heatmap mode
           #                            legend_title= legend_title,
@@ -900,19 +907,19 @@ server <- function(input, output, session) {
           #                 opacity = 1,
           #                 group = legend_title,
           #                 labFormat = labFormat_transform)
-          #     
+          #
           #   }
           # } else if (handler_list[[new_id]] == "HadUK-Grid Annual Rainfall") {
-          #   
+          #
           #   rain_values <- values(df_list[[new_id]])
           #   rain_values <- rain_values[!is.na(rain_values)]
-          #   
+          #
           #   fillColor <- colorNumeric(
           #     palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]),
           #     domain=range(rain_values),
           #     na.color = "transparent"
           #   )
-          #   
+          #
           #   m = m %>% map_fun_rain(df_list[[new_id]],
           #                          colors =  fillColor,
           #                          legend_title = legend_title) %>%
@@ -922,15 +929,15 @@ server <- function(input, output, session) {
           #               values = values(df_list[[new_id]]),
           #               title = paste0(legend_title ,"</br>","mm"),
           #               group = legend_title,
-          #               na.label = NULL) 
-          #   
-          #   
-          #   
+          #               na.label = NULL)
+          #
+          #
+          #
           # } else if (handler_list[[new_id]] == 'APIENS') {
           #   #m = m %>% map_fun_EA_pollution(df_list[[new_id]],fillColor = color_data$RGB[new_id_ii])
-          #   
+          #
           #   fillColor = colorNumeric(palette = brewer.pal(9, single_color_sequential_palettes[new_id_ii]), domain = df_list[[new_id]]$Value)
-          #   
+          #
           #   m = m %>% map_fun_apiens(df_list[[new_id]],
           #                            fillColor =  ~fillColor(Value),
           #                            legend_title= legend_title) %>%
@@ -941,52 +948,52 @@ server <- function(input, output, session) {
           #               title = paste0(legend_title ,"</br>",unique(df_list[[new_id]]$Unit)),
           #               opacity = 1,
           #               group = legend_title)
-          #   
-          #   
+          #
+          #
           # }
-            
+
           ## end add dataset
-          
-          
+
+
           # m = m %>%
           #   addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
-          
+
           incProgress(1/length(inserted_ids), detail = paste("Adding map from dataset", new_id_ii)) # add counter
-          
+
           print(head(df_list[[new_id]]))
           print(paste0(1:length(handler_list), '. ',handler_list))
         }
       })
     }
-      
+
     # Add basemaps
-      m %>%  
-        addProviderTiles("NASAGIBS.ViirsEarthAtNight2012",
-                                 group = "NASA Earth at Night 2012",
-                                 options = providerTileOptions(noWrap = TRUE)) %>% 
-        addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
-                       group = "LCM 2021 1km dominant target"
-        ) %>%
-        addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
-                    layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
-                    options = WMSTileOptions(crs=27700,opacity=0.5),
-                    group = 'IHU') %>%
-        addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery", 
-                                        "CartoDB.Positron","Esri.NatGeoWorldMap",
-                                        "OpenTopoMap","Stadia.StamenToner"#,
-                                        #"GeoportailFrance.orthos"
-                                        ), 
-                             overlayGroups = c(paste0(1:length(inserted_ids), '. ',handler_list[1:length(inserted_ids)]),
-                                               "IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"
-                                               ),
-                             position = 'topleft') 
-     
-  })  
-  
-  
-          
+    m %>%
+      addProviderTiles("NASAGIBS.ViirsEarthAtNight2012",
+                       group = "NASA Earth at Night 2012",
+                       options = providerTileOptions(noWrap = TRUE)) %>%
+      addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
+                     group = "LCM 2021 1km dominant target"
+      ) %>%
+      addWMSTiles('https://catalogue.ceh.ac.uk/maps/cca47088-8cdd-4d7a-86b4-90f0a1766364?request=getCapabilities&service=WMS&cache=false&',
+                  layers='HY.PhysicalWaters.Catchments.IHU_AreasWithCoastline',
+                  options = WMSTileOptions(crs=27700,opacity=0.5),
+                  group = 'IHU') %>%
+      addLayersControl(baseGroups = c("OpenStreetMap", "ESRI World Imagery",
+                                      "CartoDB.Positron","Esri.NatGeoWorldMap",
+                                      "OpenTopoMap","Stadia.StamenToner"#,
+                                      #"GeoportailFrance.orthos"
+      ),
+      overlayGroups = c(paste0(1:length(inserted_ids), '. ',handler_list[1:length(inserted_ids)]),
+                        "IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"
+      ),
+      position = 'topleft')
+
+  })
+
+
+
   # ## regional averages ##
-  # regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>% 
+  # regionMap = leaflet() %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
   #   addPolygons(
   #     data = NUTS_region_with_gcms_data,
   #     fillColor = ~colorQuantile("viridis", mean_concentration)(mean_concentration),
@@ -998,7 +1005,7 @@ server <- function(input, output, session) {
   #                    "NUTS ID: ", NUTS_ID),
   #     group = "NUTS Level 1"
   #   ) %>%
-  #   
+  # 
   #   addRasterImage(gb_lcm_1km_dom_tar, opacity = 0.5, color = factpal,
   #                  group = "LCM 2021 1km dominant target"
   #   ) %>%
@@ -1034,18 +1041,101 @@ server <- function(input, output, session) {
   #   hideGroup(c("LCM 2021 1km dominant target", "IHU","Land cover map 2018 25m")) %>%
   #   addControl(rr, position = "bottomleft")
   # 
-  # 
-  # 
+
+
+
+  ######### other pressures
+  
+  # normalize all scores with dplyr::percent_rank
+  
+  population_NUTS1 <- read_csv('datasets/State_of_env/NUTS1_populations_all.csv')
+  floodzone_NUTS1 <- read_csv('datasets/State_of_env/NUTS1_floodzone_areas.csv') 
+  
+  population_NUTS1 <- NUTS_sf %>% select(starts_with('nuts')) %>% left_join(population_NUTS1 %>% select(-nuts118nm), by = 'nuts118cd')
+  floodzone_NUTS1 <- NUTS_sf %>% select(starts_with('nuts')) %>% left_join(floodzone_NUTS1 %>% select(-nuts118nm), by = 'nuts118cd')
+  
+  scores_NUTS1 <- population_NUTS1 %>% select(nuts118cd,nuts118nm, geometry) %>% 
+    mutate(`Flood zone 2 area % (percent rank)` = 
+             dplyr::percent_rank(floodzone_NUTS1$FZ2_pct),
+           `Flood zone 3 area % (percent rank)` = 
+             dplyr::percent_rank(floodzone_NUTS1$FZ3_pct),
+           `Cats population (percent rank)` = 
+             dplyr::percent_rank(population_NUTS1$Cat_Population  ),
+           `Dogs population (percent rank)` = 
+             dplyr::percent_rank(population_NUTS1$Dog_Population),
+           `Human population (percent rank)` = 
+             dplyr::percent_rank(population_NUTS1$Population_allocated ),
+    )
+  
+  # add scores for England by merging Englands NUTS1, area-weighted averages
+  scores_ENG <- scores_NUTS1 %>% 
+    slice_head(n = 9) %>% # first 9 entries are only England
+    mutate(area = as.numeric(st_area(.))) %>%
+    #group_by(region) %>%
+    summarise(
+      across(
+        where(is.numeric) & !area,
+        ~ weighted.mean(.x, area, na.rm = TRUE)
+      )
+      ,
+      geometry = st_union(geometry)
+    ) %>% mutate(nuts118cd  = "ENG", nuts118nm = "England") %>% 
+    select(nuts118cd, nuts118nm, everything())
+  
+  scores_NUTS1 <- bind_rows(scores_NUTS1, scores_ENG)
+  
+  score_weights <- list( 
+    `Flood zone 2 area % (percent rank)` = 1.0  ,
+    `Flood zone 3 area % (percent rank)` = 1.5  ,
+    `Dogs population (percent rank)` = 1.0,
+    `Cats population (percent rank)` = 1.5,
+    `Human population (percent rank)` = 1.0
+  )
+  
+  # calculate overall score
+  
+  scores_NUTS1 <- scores_NUTS1 %>%
+    rowwise() %>%
+    mutate(
+      overall_score = weighted.mean(
+        c_across(all_of(names(unlist(score_weights)))),
+        unlist(score_weights),
+        na.rm = TRUE
+      )
+    ) %>%
+    ungroup()
+  
+  
+  
+  output$Output_score_weights <- renderText({
+    
+    paste(
+      sprintf("%s: %.1f", names(score_weights), unlist(score_weights)),
+      collapse = "\n"
+    )
+    
+  }) 
+  
   # ######################### indicator map by nation##  SLOW (15 seconds) #########
   
-  NUTS_sf$colour <- c('#ffffbf','#67a9cf','#ef8a62','#ef8a62',
-                      '#ffffbf','#67a9cf','#ef8a62','#ef8a62',
-                      '#ffffbf','#67a9cf','#ef8a62','#ef8a62')
   
-  indicatorNationMap = leaflet(NUTS_sf %>% st_transform(4326) %>% rename(lon = long)) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
+  # color pressure class based on Overall score
+  
+  scores_NUTS1 <- scores_NUTS1 %>% st_join(NUTS_sf %>% select(long,lat)) %>% 
+    mutate(
+      pressure_class = factor(
+        ntile(overall_score, 3),
+        labels = c("#67a9cf", "#ffffbf", "#ef8a62")
+      )
+    )
+  
+  
+  
+  indicatorNationMap = leaflet(scores_NUTS1 %>% filter(str_starts(nuts118cd, "UK")) %>% 
+                                 st_transform(4326) %>% rename(lon = long)) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
     addPolygons(color = '#A9A9A9', weight = 1, smoothFactor = 1.5,
                 opacity = 1.0, fillOpacity = 0.75,
-                fillColor = ~colour,
+                fillColor = ~pressure_class,
                 label = ~paste0(as.character(nuts118nm)),
                 popup = ~paste0("<b><h4>",as.character(nuts118nm),"</h2></b>",
                                 "<b><h6>",as.character(nuts118cd),"</h4></b>", 
@@ -1075,6 +1165,7 @@ server <- function(input, output, session) {
       output$regionMap = renderLeaflet(regionMap)
     } else{
       output$regionMap = renderLeaflet(indicatorNationMap)
+      #print(scores_NUTS1)
     }
   })
   
@@ -1125,6 +1216,9 @@ server <- function(input, output, session) {
   
   
   
+  ############
+  
+  
   BuGyRd <- c( "#005AB5", "#D3D3D3" ,"#DC3220") ##darker
   
   output$barplot_indicator <- renderPlotly({
@@ -1148,7 +1242,7 @@ server <- function(input, output, session) {
     pressures = pressures %>% arrange(fieldname) %>% 
       mutate(name = fct_relevel(name, 
                                 "Below threshold", "No data", "Above threshold"))
-    print(pressures)
+    #print(pressures)
     
     {ggplot(pressures) +
         geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
@@ -1161,28 +1255,33 @@ server <- function(input, output, session) {
         coord_flip()} %>% ggplotly()
   })
   
+  
+  
   output$barplot_pressures <- renderPlotly({
-    pressures2 = tibble(
-      fieldname = c('Flooding','Land Use','Population density'),
-      `Below threshold` = c(0.45, 0.24, 0.82)
-    )
-    pressures2$`Above threshold` = 1.0-pressures2$`Below threshold`
-    pressures2$`No data` = 0.0
-    pressures2 = pressures2 %>% arrange(fieldname) %>% 
-      pivot_longer(cols = -fieldname)%>% 
-      mutate(name = fct_relevel(name, 
-                                "Below threshold", "No data", "Above threshold"))
-    
-    
-    {ggplot(pressures2) +
-        geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
+    # pressures2 = tibble(
+    #   fieldname = c('Flooding','Land Use','Population density'),
+    #   `Below threshold` = c(0.45, 0.24, 0.82)
+    # )
+    # pressures2$`Above threshold` = 1.0-pressures2$`Below threshold`
+    # pressures2$`No data` = 0.0
+    # pressures2 = pressures2 %>% arrange(fieldname) %>% 
+    #   pivot_longer(cols = -fieldname)%>% 
+    #   mutate(name = fct_relevel(name, 
+    #                             "Below threshold", "No data", "Above threshold"))
+    # 
+    {scores_NUTS1 %>% filter(nuts118cd == input$countryInd) %>% select(-pressure_class, -long,-lat) %>%  st_drop_geometry() %>% 
+        pivot_longer(cols = -starts_with("nuts"), names_to = 'fieldname') %>% ungroup() %>% 
+        
+        ggplot() +
+        geom_bar(aes(x=fieldname, y=value),fill = "#67a9cf", stat = "identity" ) +
         theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
-        scale_fill_manual(values=c( "#67a9cf" , "#D3D3D3", "#ef8a62" ))  +
         theme(text = element_text(size = 16),
-              legend.position = "right")+
-        scale_x_discrete(limits=rev)+
-        ggtitle('Contributing pressures (illustrative)')+
-        coord_flip()} %>% ggplotly()
+              legend.position = "none")+
+        scale_y_continuous(limits = c(0, 1)) +
+        scale_x_discrete(limits=rev, labels = \(x) str_wrap(x, width = 25))+
+        ggtitle('Contributing pressures')+
+        coord_flip()} %>% ggplotly() 
+    
   })
   
   output$out_text_unhealthy <- renderText({
@@ -1210,7 +1309,7 @@ server <- function(input, output, session) {
           select(CompoundName, status) 
       }, by = c("substance" = "CompoundName"))
     
-    print(DT)
+    #print(DT)
     
     
     datatable(DT, selection = "single") %>%
@@ -1270,8 +1369,8 @@ server <- function(input, output, session) {
 
 # profvis::profvis(runApp('app.R'))
 
-options(shiny.sanitize.errors = FALSE)
-options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
+# options(shiny.sanitize.errors = TRUE)
+# options(shiny.reactlog=TRUE) #ctrl+F3 to bring up
 shinyApp(ui, server)
 
 
