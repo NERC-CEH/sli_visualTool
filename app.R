@@ -31,6 +31,8 @@ library(forcats) # factor re-ordering
 library(rnaturalearth)
 library(bsicons)
 
+load('modules/timeline_data.RData', envir = .GlobalEnv)  # temp fix
+
 
 source('data_fun.R')
 source('map_fun.R')
@@ -40,7 +42,6 @@ source('modules/timeline_fun.R')
 source('theme_elements.R')
 # data(quakes)
 
-load('modules/timeline_data.RData')
 
 
 rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png" width="auto" height="40"> </a>')
