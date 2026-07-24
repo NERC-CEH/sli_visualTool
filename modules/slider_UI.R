@@ -11,6 +11,7 @@ unique_industry_sector <- c("Agriculture","Biowaste Treatment","Cement and Miner
 
 pbms_biota_choices =  c('Buzzard','Sparrowhawk','Otter')
 unique_pfas_names <- data_process_pfas()[['unique_pfas_names']]
+unique_pfas_names <- unique_pfas_names[3:length(unique_pfas_names)] # drop "4:2 FTSA" "6:2 FTSA"
 
 unique_apiens_varnames <- data_process_apiens()[['unique_apiens_varnames']][-1] # drop first one
 unique_apiens_NECD <- data_process_apiens()[['unique_apiens_NECD']]
@@ -64,10 +65,12 @@ ea_gcms_sliders <- function(id) {
     # code("code displays your text similar to computer code"),
     
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
-                min = min(2013), max = max(2024),
+                min = min(2013), max = max(2026),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
-    ) #,
+    ) ,
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
+    
     
     # currently stuck within module >> needs exposing and pass to map to switch_map()
     # input_switch((NS(id,'PnecRiskmap')), 
@@ -97,7 +100,8 @@ CIP_sliders <- function(id) {
     selectInput(NS(id,"variable_choices"), "Choose variable:",
                 choices = unique_CIP_varnames,
                 selected = "fipronil"
-    )
+    ),
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
   )
 }
 
@@ -158,7 +162,8 @@ pbms_sliders <- function(id) {
       # selectInput(NS(id,'var_metal_map_sgl'), 'Choose a metal species:', choices = metals_choices, multiple = FALSE)
       
       # change to only slider, conditional on biota choice, update choices
-      selectInput(NS(id,'var_map_sgl'), 'Choose a metal or SGARs species:', choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices), multiple = FALSE)
+      selectInput(NS(id,'var_map_sgl'), 'Choose a metal or SGARs species:', choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices), multiple = FALSE),
+      checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
       
   )
 }
@@ -181,7 +186,8 @@ pfas_sliders <- function(id) {
    selectInput(NS(id,"transform"), "Choose transform method:",
                choices =c("Natural Log")#c("Natural Log", "Base 10 Log")
    ),
-   checkboxInput("heatmap", "Show Heatmap", FALSE)
+   checkboxInput("heatmap", "Show Heatmap", FALSE),
+   checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
   )
 }
 
@@ -229,8 +235,8 @@ apiens_sliders <- function(id) {
     # )
     selectInput(NS(id,"variable_choices"), "Choose variable:",
                 choices = unique_apiens_varnames[1:20], #c("NH4-N","NO3-N"),
-                selected = c("NH4-N","NO3-N"), #unique_apiens_varnames[2], #c("NH4-N","NO3-N")
-                multiple = TRUE
+                selected = c("NH4-N"), #unique_apiens_varnames[2], #c("NH4-N","NO3-N")
+                multiple = FALSE
     ),
     selectInput(NS(id,"necd_choices"), "Choose NECD classes:",
                 choices =unique_apiens_NECD,
@@ -245,7 +251,7 @@ apiens_sliders <- function(id) {
 euso_sliders <- function(id) {
   tagList(
     selectInput(NS(id,"euso_var_choices"), "Choose variable:",
-                choices = c('Cu','Cd','Zn') 
+                choices = c('Cu')#,'Cd','Zn') 
     ),
     p()
   )

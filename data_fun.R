@@ -214,36 +214,57 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   
   ref_gcms = ref_gcms %>% filter(Compound_Name == CompoundName) %>% 
     dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`)
+  # 
+  # #### data to parquet
+  # fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
+  # fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
+  # 
+  # fp_lcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_LCMS.csv'
+  # fp_gcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_GCMS.csv'
+  # 
+  # 
+  # data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
+  # 
+  # data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
+  # 
+  # data_lcms_26 <- read.csv(fp_lcms_26) %>% rename(method = METHOD) %>%  select(where(~ !all(is.na(.)))) %>% mutate(LOD = as.numeric(LOD))
+  # 
+  # data_gcms_26  <- read.csv(fp_gcms_26) %>% mutate(method = METHOD) %>%  select(where(~ !all(is.na(.))))%>% mutate(LOD = as.numeric(LOD))
+  # 
+  # #data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
+  # 
+  # data_gcms <- bind_rows(data_gcms,data_lcms, data_lcms_26, data_gcms_26) # rbind gcms and lcms
+  # 
+  # 
+  # #   filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
+  # 
+  # 
+  # 
+  # # Filter out rows with NA values (maybe should keep)
+  # filtered_data_gcms <- data_gcms[!is.na(data_gcms$Concentration), ]
+  # 
+  # # filter data that is within UK inland, does this take long?
+  # uk <- ne_countries(scale = "small", country = "United Kingdom", returnclass = "sf")
+  # points_sf <- st_as_sf(filtered_data_gcms, coords = c("Longitude", "Latitude"), crs = 4326)
+  # points_in_uk <- st_filter(points_sf, uk)
+  # filtered_data_gcms <- points_in_uk %>%
+  #   st_drop_geometry() %>%
+  #   bind_cols(
+  #     st_coordinates(points_in_uk) %>% as.data.frame() %>% setNames(c("Longitude", "Latitude"))
+  #   )
+  # # # save all files to parquet
+  # write_parquet(filtered_data_gcms , "datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
+  # 
+  ## END data to parquet
   
-  fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
-  fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
+  filtered_data_gcms <- read_parquet("datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
   
-  data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
-  
-  data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
-  
-  data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
-  
-  #filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
   
   # Filter the data based on the selected criteria
-  filtered_data_gcms <- data_gcms %>%
+  filtered_data_gcms <- filtered_data_gcms %>%
     filter(Compound_Name == CompoundName,
            year >= start_year,
            year <= end_year)
-  
-  # Filter out rows with NA values
-  filtered_data_gcms <- filtered_data_gcms[!is.na(filtered_data_gcms$Concentration), ]
-  
-  # filter data that is within UK inland
-  uk <- ne_countries(scale = "small", country = "United Kingdom", returnclass = "sf")
-  points_sf <- st_as_sf(filtered_data_gcms, coords = c("Longitude", "Latitude"), crs = 4326)
-  points_in_uk <- st_filter(points_sf, uk)
-  filtered_data_gcms <- points_in_uk %>%
-    st_drop_geometry() %>%
-    bind_cols(
-      st_coordinates(points_in_uk) %>% as.data.frame() %>% setNames(c("Longitude", "Latitude"))
-    )
   
   # Calculate the minimum and maximum values
   min_value <- min(filtered_data_gcms$Concentration)
@@ -712,7 +733,8 @@ data_process_CIP <- function(NameDeterminandName='carbamazepine', year =  2020){
   data_CIP <- data_CIP %>% 
     left_join(guess_lat_lon,by = join_by(TreatmentPlant)) %>% 
     mutate(Latitude = if_else(Latitude == 0, Guess_lat, Latitude),
-           Longitude = if_else(Longitude == 0, Guess_lon, Longitude))
+           Longitude = if_else(Longitude == 0, Guess_lon, Longitude)) %>% 
+    dplyr::select(-Guess_lon, Guess_lat)
     
   # # data can be monthly, summarize data by site to yearly ==>> not working yet
   # data_CIP = data_CIP %>% 

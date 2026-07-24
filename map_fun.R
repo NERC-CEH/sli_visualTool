@@ -80,13 +80,14 @@ map_fun_EA_pollution <- function(map, data, label_IndustrySector = 'Industry sec
 ## TEST:data = data_process_EA_WQ_gcms()
 ## leaflet() %>% addTiles() %>% map_fun_EA_WQ_gcms(data=data)
 map_fun_EA_WQ_gcms <- function(map, data, fillColor = "blue",
-                               legend_title= 'EA water quality GCMS data'){
+                               legend_title= 'EA water quality GCMS data',
+                               cluster_points = FALSE){
     poptext = ~paste(
       "<b>Sample Site ID: </b>", Sample_Site_ID, "<br/>",
       "<b>Compound Name: </b>", Compound_Name, "<br/>",
       "<b>Concentration: </b>", Concentration, "<br/>",
       "<b>Unit: </b>", unit, "<br/>",
-      "<b>PNEC Risk Quotient (RQ): </b>", PNEC_RQ, "<br/>",
+      "<b>PNEC Risk Quotient (RQ): </b>",format(round(PNEC_RQ, 2), nsmall = 2) , "<br/>",
       "<b>Sample description: </b>", SMC_DESC, "<br/>",
       "<b>Date: </b>", Sample_datetime, "<br/>",
       "<b>Method: </b>", method, "<br/>",
@@ -104,7 +105,8 @@ map_fun_EA_WQ_gcms <- function(map, data, fillColor = "blue",
         fillColor = fillColor, # Fill color
         fillOpacity = 0.8, # Opacity of the fill color
         weight = 0.5,
-        group = legend_title
+        group = legend_title,
+        clusterOptions = if (cluster_points) markerClusterOptions() else NULL
       )
   
 }
@@ -118,7 +120,8 @@ map_fun_pbms <- function(map, data,
                          # var_map_sgl = "Cd", 
                          fillColor = "blue", 
                          colorPalette = 'Oranges',
-                         legend_title= NULL){
+                         legend_title= NULL,
+                         cluster_points = FALSE){
   
     #temporary fix
     identical_columns <- sapply(data, function(col) identical(data[['value']], col))# check which one is identical to the column `value`
@@ -150,7 +153,8 @@ map_fun_pbms <- function(map, data,
                          color = "black",   # Outline color
                          # fillColor = fillColor, # Fill color
                          fillOpacity = 0.8, # Opacity of the fill color
-                         weight = 0.5,) %>%  
+                         weight = 0.5,
+                         clusterOptions = if (cluster_points) markerClusterOptions() else NULL) %>%  
         addLegend("bottomright", data=data, pal = qpal, values = ~value,
                   title = paste(legend_title, "</br>Metals conc. [µg/g dry weight]"),
                   na.label = "chemicals data not available",
@@ -177,7 +181,8 @@ map_fun_pbms <- function(map, data,
         map = map %>% 
           addCircleMarkers(~long, ~lat, data=data, fillColor = ~qpal(value), 
                            color = "black", weight = 1.0, group = legend_title,
-                           fillOpacity = 0.8, # Opacity of the fill color
+                           fillOpacity = 0.8,
+                           clusterOptions = if (cluster_points) markerClusterOptions() else NULL, # Opacity of the fill color
                            popup = ~paste(
                              "<b>Sex: </b>", `Sex (Male/Female/Unknown)`, "<br/>",
                              "<b>AgeClass: </b>", `Age (Adult/Juvenile/Unknown)`, "<br/>",
@@ -214,6 +219,7 @@ map_fun_pbms <- function(map, data,
                          color = "black", weight = 1.0,
                          fillOpacity = 0.8, # Opacity of the fill color
                          group = legend_title,
+                         clusterOptions = if (cluster_points) markerClusterOptions() else NULL,
                          popup = ~paste(
                            "<b>AgeClass: </b>", AGE, "<br/>",
                            "<b>Year: </b>", year, "<br/>",
@@ -237,7 +243,8 @@ map_fun_pbms <- function(map, data,
 ## fillColor = colorNumeric(palette = brewer.pal(9, "Reds"), domain = data[[1]]$transform_value)
 ## leaflet() %>% addTiles() %>% map_fun_pfas(data=data[[1]],fillColor = fillColor)
 
-map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatmap = FALSE){
+map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatmap = FALSE,
+                         cluster_points = FALSE){
   
   if (showHeatmap) {
     
@@ -273,7 +280,8 @@ map_fun_pfas <- function(map, data, fillColor, legend_title = "PFAS", showHeatma
         fillColor = ~fillColor(transform_value), # ~pal(transform_value), 
         fillOpacity = 0.8, # Opacity of the fill color
         weight = 0.2,
-        group = legend_title
+        group = legend_title,
+        clusterOptions = if (cluster_points) markerClusterOptions() else NULL
       ) 
   }
   # %>%
@@ -302,7 +310,8 @@ map_fun_rain <- function(map, data, colors, legend_title = "HadUK-Grid Annual Ra
 ## TEST:data = data_process_apiens()[[1]]
 ## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$Value)
 ## leaflet() %>% addTiles() %>% map_fun_apiens(data = data, fillColor=fillColor)
-map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS"){
+map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS",
+                           cluster_points = FALSE){
   
  
     map  %>%
@@ -323,7 +332,8 @@ map_fun_apiens <- function(map, data, fillColor= "blue", legend_title = "APIENS"
         fillColor = fillColor, # ~pal(transform_value), 
         fillOpacity = 0.8, # Opacity of the fill color
         weight = 0.2,
-        group = legend_title
+        group = legend_title,
+        clusterOptions = if (cluster_points) markerClusterOptions() else NULL
       ) 
   
   
@@ -340,15 +350,43 @@ map_fun_catsdogs  <- function(map, map_data, palette_name = 'viridis', legend_ti
   
   head(map_data)
   
-  map %>% 
-    addPolygons(data = map_data,
-                stroke = FALSE, smoothFactor = 0.5, fillOpacity = 0.5, weight = 1, opacity = 1.0,
-                fillColor =  ~pal(Value),
-                   group = legend_title) 
+  # pick the column and label depending on what's present
+  if ("PostcodeDistrict" %in% names(map_data)) {
+    area_label <- "Postcode district: "
+    area_value <- map_data$PostcodeDistrict
+  } else if ("region" %in% names(map_data)) {
+    area_label <- "Region: "
+    area_value <- map_data$Region
+  } else {
+    area_label <- "Area: "
+    area_value <- NA
+  }
+  
+  popups <- paste0(
+    "<b>", area_label, "</b>", area_value, "<br/>",
+    "<b>Value: </b>", map_data$Value, "<br/>"
+  )
+  
+  map %>%
+    addPolygons(
+      data = map_data,
+      stroke = FALSE, smoothFactor = 0.5, fillOpacity = 0.5, weight = 1, opacity = 1.0,
+      popup = popups,                 # precomputed vector, not a formula
+      fillColor = ~pal(Value),
+      group = legend_title
+    )
   
 }
 
-map_fun_EUSO <- function(map, data, colors, legend_title = "Soil health") {
+#TEST
+# data = data_process_EUSO()
+# leaflet() %>% addTiles() %>% map_fun_EUSO(data = data)
+#leaflet() %>% addTiles() %>%
+#  map_fun_EUSO(data = normalizePath("datasets/EU_soil_degradation/Cu/copper_map_fill.tif"))
+
+# clearGroup doesn't work
+
+map_fun_EUSO <- function(map, data, colors= hcl.colors(256, palette = "inferno"), legend_title = "Soil health") {
   print('map_process_EUSO')
   
   #pal <- colorNumeric("viridis", domain = values(data), na.color = "transparent")
@@ -360,10 +398,11 @@ map_fun_EUSO <- function(map, data, colors, legend_title = "Soil health") {
     
     leafem::addGeotiff(data, 
                      colorOptions =  colorOptions(
-                       palette = hcl.colors(256, palette = "inferno")
+                       palette = colors
                        , na.color = "transparent"
                      ),
                       opacity = 0.7,
+                     layerId = "euso",
                       group = legend_title) %>% 
     setView(-3.0, 55.5, zoom = 6) 
   
@@ -436,7 +475,8 @@ map_fun_CSV <- function(map, data, long_col, lat_col, fillColor= "blue", legend_
 ## TEST:data = data_process_CIP()[[1]]
 ## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$SampleValue)
 ## leaflet() %>% addTiles() %>% map_fun_CIP(data = data, fillColor=fillColor)
-map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP"){
+map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP",
+                        cluster_points = FALSE){
   
   print(data)
   
@@ -470,7 +510,8 @@ map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP"){
       fillColor = fillColor, # ~pal(transform_value), 
       fillOpacity = 0.8, # Opacity of the fill color
       weight = 0.2,
-      group = legend_title
+      group = legend_title,
+      clusterOptions = if (cluster_points) markerClusterOptions() else NULL
     ) 
   
 }
@@ -526,8 +567,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
       round(exp(x) - 1, 7)
   )
   print(paste0('switch_map', input_choice))
-  print(map_options)
-  
+
   if (input_choice == 'EA water quality GCMS/LCMS data') {
     # Check if the dataset is empty or has no valid data
     if (nrow(map_data) == 0 ||
@@ -569,6 +609,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
       m = m %>% map_fun_EA_WQ_gcms(
         map_data,
         fillColor =  ~ fillColor(log_Concentration),
+        cluster_points = map_options$toggle_clustering,
         legend_title = legend_title
       ) %>%
         # addLegend(data = map_data,
@@ -603,38 +644,61 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
   } else if (input_choice == "EA water quality GCMS/LCMS data (RISK)") {
     factpal <- colorFactor(OkabeItoPal, c("below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"),
                            ordered=TRUE,
-                           na.color = "grey70")
+                           na.color = "gray")
+    
+    head(map_data)
     
     m = m %>% 
       map_fun_EA_WQ_gcms(
         map_data,
         fillColor =  ~ factpal(RQ_label),
+        cluster_points = map_options$toggle_clustering,
         legend_title = legend_title
       ) %>% 
       addLegend(
-        title = htmltools::HTML(paste0(
-          legend_title, "<br>", "Risk Quotient (RQ)"
-        )),
-        position = "bottomright",
-        colors = c(OkabeItoPal %>% rev(), "grey70"),   # 6 + 1 = 7
-        labels = c(c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev(), "NA")
-        
+        colors = c( rev(OkabeItoPal), "gray" ),   # 6 category colors + NA color = 7
+        labels = c("NA", "below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)",
+                   "RQ (100,1000)", "RQ > 1000") %>% rev(),  # 7 labels to match
+        title    = htmltools::HTML(paste0("legend_title", "<br>", "Risk Quotient (RQ)")),
+        position = "bottomright"
       )
+      
+    # addLegend(
+    #     title = htmltools::HTML(paste0(
+    #       legend_title, "<br>", "Risk Quotient (RQ)"
+    #     )),
+    #     position = "bottomright",
+    #     colors = c(OkabeItoPal %>% rev(), "grey70"),   # 6 + 1 = 7
+    #     labels = c(c("below LOD", "RQ < 1", "RQ (1,10)","RQ (10,100)","RQ (100,1000)","RQ > 1000") %>% rev(), "NA")
+    #     
+    #   )
     
   } else if (input_choice == 'EA pollution inventory 2021') {
     #m = m %>% map_fun_EA_pollution(map_data,fillColor = color_data$RGB[new_id_ii])
-    non_na_vals <- map_data$quantity_released_tons[!is.na(map_data$quantity_released_tons)]
+    non_na_vals <- map_data$log_quantity_released_tons[!is.na(map_data$log_quantity_released_tons)]
+    
+    rng <- range(map_data$log_quantity_released_tons, na.rm = TRUE)
+    
+    # handle empty/all-NA data, and the single-value case, robustly. Padding legend
+    if (!all(is.finite(rng))) {
+      rng <- c(0, 1)                       # nothing usable -> arbitrary valid range
+    } else if (isTRUE(diff(rng) == 0)) {   # isTRUE() collapses to one logical
+      pad <- max(abs(rng), 1) * 0.05
+      rng <- rng + c(-1, 1) * pad
+      if(rng[1] < 0.0) {rng[1] <- 0.0}
+
+    }
     
     
     fillColor = colorNumeric(
       palette = brewer.pal(9, palette_name),
-      domain = map_data$log_quantity_released_tons
+      domain = rng
     )
     
     m = m %>% map_fun_EA_pollution(
       map_data,
       fillColor =  ~ fillColor(log_quantity_released_tons),
-      # cluster_points = map_options$toggle_clustering,
+      cluster_points = map_options$toggle_clustering,
       legend_title = legend_title
     ) %>%
       # addLegend(data = map_data,
@@ -650,7 +714,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         data = map_data,
         position = "bottomright",
         pal = fillColor,
-        values =  ~ map_data$log_quantity_released_tons,
+        values =  rng,
         title = htmltools::HTML(paste0(legend_title, "<br>", "tonnes")),
         shape = "rect",
         orientation = "horizontal",
@@ -669,6 +733,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         map_data,
         colorPalette = palette_name,
         var_biota = map_data$biota[1],
+        cluster_points = map_options$toggle_clustering,
         legend_title = legend_title
       )
     }, error = function(e) {
@@ -746,7 +811,9 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
           fillColor,
         # Use gradient_colors in heatmap mode
         legend_title = legend_title,
-        showHeatmap  = showHeatmap
+        showHeatmap  = showHeatmap,
+        cluster_points = map_options$toggle_clustering
+        
       ) %>%
         addLegendNumeric(
           data = map_data,
@@ -823,7 +890,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         position = "bottomright",
         pal = colorNumeric(palette_name, NULL),
         values = ~ Value,
-        title = htmltools::HTML(paste0(legend_title)),
+        title = htmltools::HTML(paste0(legend_title, '\n(est. count per area)')),
         group = legend_title,
         shape = "rect",
         orientation = "horizontal",
@@ -842,15 +909,15 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     #   na.color = "transparent"
     # )
     
-    m = m %>% map_fun_EUSO(map_data, colors =  fillColor, legend_title = legend_title) #%>%
-    # addLegend(data = map_data,
-    #           position = "bottomright",
-    #           pal = fillColor,
-    #           values = values(map_data),
-    #           title = paste0(legend_title ,"</br>","[mg Kg-1]"),
-    #           group = legend_title,
-    #           na.label = NULL)
-    
+    m = m %>% map_fun_EUSO(map_data, colors =  fillColor, legend_title = legend_title) %>%
+    addLegend(data = map_data,
+              position = "bottomright",
+              pal = fillColor,
+              values = values(map_data),
+              title = paste0(legend_title ,"</br>","[mg Kg-1]"),
+              group = legend_title,
+              na.label = NULL)
+
   } else if (input_choice == "AgZero+ Input to Yield Ratio (IYR)") {
     IYR_values <- values(map_data)
     IYR_values <- IYR_values[!is.na(IYR_values)]
@@ -925,6 +992,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
     m = m %>% map_fun_CIP(
       map_data,
       fillColor =  ~ fillColor(SampleValue ),
+      cluster_points = map_options$toggle_clustering,
       legend_title = legend_title
     ) %>%
       addLegendNumeric(

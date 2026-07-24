@@ -28,12 +28,19 @@ library(leaflegend)
 library(nanoparquet)
 library(lubridate)
 library(forcats) # factor re-ordering
+library(rnaturalearth)
+library(bsicons)
+
 
 source('data_fun.R')
 source('map_fun.R')
 source('modules/data_modules.R')
+source('modules/chemical_timeline_tab.R')
+source('modules/timeline_fun.R')
 source('theme_elements.R')
 # data(quakes)
+
+load('modules/timeline_data.RData')
 
 
 rr <- htmltools::HTML('<a href="https://ceh.ac.uk/" target="_blank"> <img border="0" alt="ImageTitle" src="https://www.ceh.ac.uk/sites/default/files/images/theme/ukceh_logo_long_720x170_rgb.png" width="auto" height="40"> </a>')
@@ -84,7 +91,12 @@ ui <- page_fillable(
   #   HTML('<div id="watermark">SLI project. For demonstration only.</div>')
   # ),
   tags$head(tags$style(".rightAlign{float:right;}")),
-  
+  tags$head(tags$style(HTML("
+  .bslib-full-screen-enter {
+    --bslib-color-fg: #ffffff;   /* icon color */
+    --bslib-color-bg: #0483A4;   /* button background */
+  }
+  "))),
   title = 'Systems Level Indicator Visual Tool',
   #theme = bs_theme(version = 5),
   theme = UKCEH_theme,  # << add this line
@@ -168,6 +180,8 @@ ui <- page_fillable(
                     nav_panel("Table",
                               # verbatimTextOutput("out"),   # uncomment for debugging
                               # verbatimTextOutput("out2"),
+                              # verbatimTextOutput("out3"),
+                              
                               accordion(
                                 div(id="placeholder-table"),
                                 multiple = TRUE, open=TRUE
@@ -178,21 +192,37 @@ ui <- page_fillable(
                 )
               )),
     nav_panel(title = "Indicator", 
-              layout_columns(
-                # col_widths = c(4, 4,4),
-                col_widths = breakpoints(
-                  sm = 12, # Stacks on small
-                  md = 12, # Stacks on medium
-                  lg = c(3, 5, 4)   # Side-by-side on large
-                ),
+              # layout_columns(
+              #   # col_widths = c(4, 4,4),
+              #   col_widths = breakpoints(
+              #     sm = 12, # Stacks on small
+              #     md = 12, # Stacks on medium
+              #     lg = c(3, 5, 4)   # Side-by-side on large
+              #   ),
+              layout_column_wrap(
+                width = "300px",
+                # card 1
                 card(
+                  card_header(
+                    class = "border-bottom border-primary border-3",
+                    div(
+                      class = "d-flex justify-content-between align-items-center w-100",
+                      span("1. UK overview"),
+                      bslib::tooltip(
+                        bsicons::bs_icon("info-circle"),
+                        "Select a region. This card displays the ranked concern of each region by aggregating score of each pressures and response. High/moderate/low scores cuts the regions by 3 equal parts.",
+                        placement = "left"
+                      )
+                    )
+                  ),
                   selectInput("RegtionOption", "Choose indicator to display:",
-                              c('Chemical Pollution Indicator', 
-                                # 'Mean Pharceuticals', 
-                                # 'Mean metals', 
-                                'Mean Phenanthrene by region'  )),
+                              c('Chemical Pollution Indicator'#,
+                                ### 'Mean Pharceuticals',
+                                ### 'Mean metals',
+                               # 'Mean Phenanthrene by region'
+                                )),
                   #HTML('<p align="center" style="font-weight: bold;color:orange">For illustration only.</p>'),
-                  leafletOutput('regionMap',height = 650) %>% withSpinner(type=5,color = "#A9A9A9")#,
+                  leafletOutput('regionMap',height = 700) %>% withSpinner(type=5,color = "#A9A9A9")#,
                   # class = "border"
                   , accordion(open = FALSE,
                               accordion_panel(
@@ -201,34 +231,63 @@ ui <- page_fillable(
                               )
                   )
                   , full_screen = TRUE),
+                # card 2
                 card(
+                  card_header(
+                    class = "border-bottom border-primary border-3",
+                    div(
+                      class = "d-flex justify-content-between align-items-center w-100",
+                      span("2. Drilldown to region"),
+                      bslib::tooltip(
+                        bsicons::bs_icon("info-circle"),
+                        "Select a region. This card displays contributing pressures and responses to overall score.",
+                        placement = "left"
+                      )
+                    )
+                  ),
+                  
                   fluidRow(
                     column(width = 6, 
-                           selectInput('countryInd', 'Choose NUTS1 region:', 
+                           selectInput('countryInd', 'Choose region (or click on map):', 
                                        c(setNames(NUTS_sf$nuts118cd, NUTS_sf$nuts118nm), "England" = "ENG"),),
                            
                     ),
                     column(width = 6, 
-                           selectInput('compartmentInd', 'Choose Compartment:', c('Terrestrial','Freshwater','Marine','Air')),
+                           selectInput('compartmentInd', 'Choose Compartment:', 
+                                       c('Terrestrial and freshwater') #c('Terrestrial','Freshwater','Marine','Air')
+                                       ),
                     )
                   ),
                   plotlyOutput("barplot_indicator")  %>% withSpinner(type=5,color = "#A9A9A9"), 
                   plotlyOutput("barplot_pressures")#,
                   #class = "border"
                   , full_screen = TRUE),
+                # card 3
                 card(
+                  card_header(
+                    class = "border-bottom border-primary border-3",
+                    div(
+                      class = "d-flex justify-content-between align-items-center w-100",
+                      span("3. Drilldown to facotrs"),
+                      bslib::tooltip(
+                        bsicons::bs_icon("info-circle"),
+                        "This card allows you to drill down to the data that contributes to the final score. Currenlty, these are threshold exceedances.",
+                        placement = "left"
+                      )
+                    )
+                  ),
                   selectInput('factor_type', 'Choose factor:', "Vet medicine", "Vet. medicine"),
                   # h4("Covergence of evidence"),
                   #p("The number of unhealthy vet med sub-factors: 2"),
-                  value_box(
-                    title = "The number of above threshold vet med sub-factors",
-                    value = textOutput("out_text_unhealthy"), # container = h2
-                    showcase = bsicons::bs_icon("x-circle-fill"),
-                    theme = value_box_theme(bg = "#fddce2", fg = "#b12051"),
-                    #theme = value_box_theme(bg = "#F7D9BC", fg = "#ef8a62"),
-                    # height = "130px",
-                    class = "border"
-                  ),
+                  # value_box(
+                  #   title = "The number of above threshold vet med sub-factors",
+                  #   value = textOutput("out_text_unhealthy"), # container = h2
+                  #   showcase = bsicons::bs_icon("x-circle-fill"),
+                  #   theme = value_box_theme(bg = "#fddce2", fg = "#b12051"),
+                  #   #theme = value_box_theme(bg = "#F7D9BC", fg = "#ef8a62"),
+                  #   # height = "130px",
+                  #   class = "border"
+                  # ),
                   HTML(
                     '<p align="center" style="font-weight: bold;color:orange">Click on chemicals to view statistics.</p>'
                   ),
@@ -281,8 +340,9 @@ ui <- page_fillable(
     #             )
     #           )),
     # nav_panel(title = "Data Sources", tags$iframe(src='data_source.html', width='100%',height=900), p(),p(),p(),hr()),
+    nav_panel(title = "Chemical History Timeline", chem_timeline_ui("chemtl")),
     nav_panel(title = "Data Catalogue", DTOutput('catalogueDT'),p(),p(),p(),hr()), 
-    #nav_panel(title = "Chemical History Timeline", p('Coming soon.')),
+    
     nav_panel(title = "Accessibility Statement", tags$iframe(src='accessibility_statement.html', width='100%', height=1500), p(),p(),p(),hr()),
     nav_panel(title = "About", 
               h2('About this visual tool'),
@@ -396,10 +456,14 @@ server <- function(input, output, session) {
   ############## Observers handling Point Data tab ####################
   ui_handler <- reactiveVal(list()) #stores the reactive UI 
   df_handler <- reactiveVal(list()) #store the reactive dataframes as list
+  map_options_handler <- reactiveVal(list()) #store the reactive dataframes as list
+  
   inserted_ids <- c()  #list of dynamic UI ids
   
   # storage of point datasets
   reactive_df <- reactiveValues(data = NULL)
+  
+  
   
   # observer to insert UI for another dataset (point data on map)
   observeEvent(input$insertBtn, {
@@ -465,6 +529,14 @@ server <- function(input, output, session) {
       df_handler(df_list)
       
       #print(df_handler())
+
+      
+      ## Append map options
+      map_options_list <- isolate(map_options_handler())
+      map_options_list <- c(map_options_list, new_handler['map_options'])
+      names(map_options_list)[length(map_options_list)] <- new_id
+      map_options_handler(map_options_list)
+      
       
       DT_mod_server(paste0(new_id,'_table'), df_handler()[[new_id]])  # table module
       #DT_mod_server(paste0(new_id,'_table'), mtcars)
@@ -510,6 +582,11 @@ server <- function(input, output, session) {
   })
   output$out2 <- renderPrint({
     lapply(df_handler(), function(handle) {
+      handle()
+    })
+  })
+  output$out3 <- renderPrint({
+    lapply(map_options_handler(), function(handle) {
       handle()
     })
   })
@@ -671,21 +748,6 @@ server <- function(input, output, session) {
     showNotification("Map updating...", type = "warning",duration = 5.0)
 
 
-
-    m = leafletProxy("myMap") %>%
-      removeLayersControl() %>%
-      clearShapes() %>%
-      clearControls() %>%
-      clearMarkers() %>%
-      clearHeatmap() %>%
-      clearImages() %>%
-      clearMarkerClusters() # more robust: clearGroup("group1")
-
-    # leafem::addGeotiff(file = 'datasets/empty_raster.tif',
-    #                    opacity = 0.0) # empty raseter to clear addGeotiff, doesn't work
-
-    #addMarkers(data = quakes[1:20,],~long, ~lat, popup = ~as.character(mag), label = ~as.character(mag))
-
     # unpack the reactive list
     # outstanding issues: seems to not shrink in legnth after removing datasets--use with care
     df_list <- lapply(df_handler(), function(handle) {
@@ -694,9 +756,35 @@ server <- function(input, output, session) {
     handler_list <- lapply(ui_handler(), function(handle) {
       handle()
     })
+    
+    map_options_list <- lapply(map_options_handler(), function(handle) {
+      handle()
+    })
+    
+    ## Clear map
+    dataset_groups <- if (length(inserted_ids) > 0) {
+      paste0(seq_along(inserted_ids), ". ",
+             unlist(handler_list)[seq_along(inserted_ids)])
+    } else {
+      character(0)
+    }
 
-
-
+    m = leafletProxy("myMap") %>%
+      removeLayersControl() %>%
+      clearShapes() %>%
+      clearControls() %>%
+      clearMarkers() %>%
+      clearHeatmap() %>%
+      clearImages() %>%
+      clearMarkerClusters() %>% # more robust: clearGroup("group1")
+      removeImage("euso")
+    
+    
+    for (g in dataset_groups) {
+      print(g)
+      m <- m %>% clearGroup(g)   # clears geotiffs etc. by group
+    } 
+    
 
     #somewhere in your reactive server code
     # list_of_inputs <- reactiveValuesToList(input)
@@ -779,11 +867,11 @@ server <- function(input, output, session) {
 
 
           single_color_sequential_palettes <- c("Reds", "Blues", "Greens", "Purples", "Oranges", "Greys")
-
           ## New function
           m = switch_map(m = m,
                          map_data = df_list[[new_id]],
                          input_choice = handler_list[[new_id]],
+                         map_options = map_options_list[[new_id]],
                          legend_title=legend_title,
                          # legend_title = new_handler['legend_choices'],
                          showHeatmap = input$heatmap,
@@ -1132,13 +1220,16 @@ server <- function(input, output, session) {
   
   
   indicatorNationMap = leaflet(scores_NUTS1 %>% filter(str_starts(nuts118cd, "UK")) %>% 
-                                 st_transform(4326) %>% rename(lon = long)) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
+                                 st_transform(4326) %>% rename(lon = long) , 
+                               options = leafletOptions(zoomSnap = 0.5, zoomDelta = 0.5)
+                               ) %>% addTiles() %>% setView(-3.0, 55.5, zoom = 6)  %>%
     addPolygons(color = '#A9A9A9', weight = 1, smoothFactor = 1.5,
                 opacity = 1.0, fillOpacity = 0.75,
+                layerId = ~nuts118cd,     # <- THIS is what populates click$id
                 fillColor = ~pressure_class,
                 label = ~paste0(as.character(nuts118nm)),
-                popup = ~paste0("<b><h4>",as.character(nuts118nm),"</h2></b>",
-                                "<b><h6>",as.character(nuts118cd),"</h4></b>", 
+                popup = ~paste0("<b><h4>",as.character(nuts118nm),"</h4></b>",
+                                "<b><h6>",as.character(nuts118cd),"</h6></b>", 
                                 "<p><font color='#c2c5cc'> &copy;" ,format(Sys.Date(), "%Y"),
                                 " UK Centre for Ecology & Hydrology </font></p>"
                 ),
@@ -1168,6 +1259,15 @@ server <- function(input, output, session) {
       #print(scores_NUTS1)
     }
   })
+  
+  
+  observeEvent(input$regionMap_shape_click, {
+    click <- input$regionMap_shape_click
+    print(click)
+    if (is.null(click$id)) return()
+    updateSelectInput(session, "countryInd", selected = click$id)
+  })
+
   
   ########## pressures plots ###############
   status <- list()
@@ -1246,13 +1346,28 @@ server <- function(input, output, session) {
     
     {ggplot(pressures) +
         geom_bar(aes(x=fieldname, y=value,fill=name ),stat = "identity" ) +
-        theme_minimal() + theme(legend.position="none", axis.title=element_blank())+
+        theme_minimal() +   theme(text = element_text(size = 16),
+                                  legend.position = "right",
+                                  axis.title = element_blank()) +
         scale_fill_manual(values= c("#67a9cf" , "#D3D3D3", "#ef8a62"))  +
         theme(text = element_text(size = 16),
-              legend.position = "right")+
-        scale_x_discrete(limits=rev)+
-        ggtitle(paste0(country_title,': ',  input$compartmentInd))+
-        coord_flip()} %>% ggplotly()
+              legend.position = "right",
+              axis.title=element_blank())+
+        labs(fill = NULL) +                                   # remove legend title
+        scale_x_discrete(limits=rev, labels = \(x) str_wrap(x, width = 20))+
+        coord_flip()} %>% ggplotly() %>%
+      layout(title = list(text = paste0(country_title,':',  input$compartmentInd), 
+                          font = list(size = 16)), 
+             margin = list(t = 60),      # more top margin = room for the title),
+               legend = list(
+                 x = 0.98, y = 0.98,          # top-right corner, inside the plot
+                 xanchor = "right",
+                 yanchor = "top",
+                 bgcolor = "rgba(255,255,255,0.6)",   # semi-transparent so data shows through
+                 bordercolor = "grey70",
+                 borderwidth = 1
+               )
+             )
   })
   
   
@@ -1278,7 +1393,7 @@ server <- function(input, output, session) {
         theme(text = element_text(size = 16),
               legend.position = "none")+
         scale_y_continuous(limits = c(0, 1)) +
-        scale_x_discrete(limits=rev, labels = \(x) str_wrap(x, width = 25))+
+        scale_x_discrete(limits=rev, labels = \(x) str_wrap(x, width = 20))+
         ggtitle('Contributing pressures')+
         coord_flip()} %>% ggplotly() 
     
@@ -1364,10 +1479,17 @@ server <- function(input, output, session) {
   })
   
   
+  ## Chemical History Timeline tab
+  chem_timeline_server("chemtl")
   
 }
 
 # profvis::profvis(runApp('app.R'))
+
+# use these 3 while developing
+# options(shiny.sanitize.errors = FALSE)   # show the real message, not the generic one
+# options(shiny.fullstacktrace = TRUE)     # show the full call stack
+# options(shiny.trace = FALSE)             # (leave off unless debugging reactivity)
 
 # options(shiny.sanitize.errors = TRUE)
 # options(shiny.reactlog=TRUE) #ctrl+F3 to bring up

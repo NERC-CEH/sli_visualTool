@@ -18,11 +18,12 @@ dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS d
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
                     "Pesticde risk to insects",
-                    "UKWIR Chemical Investigation Programme (CIP)",
+                    "UKWIR Chemical Investigation Programme (CIP)"
                     # "Wastewater treatment works (WwTW) info",
-                    "NORMAN EMPODAT database",
+                    #"NORMAN EMPODAT database",
                     # "Lough Neagh Catchment Chemistry",
-                    "Custom file upload (.csv)")
+                    #"Custom file upload (.csv)"
+                    )
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -287,24 +288,12 @@ datselect_mod_server <-  function(id) {
         reactiveValuesToList(input)
       }
     })
-    
-    
-    # map_options <<<<< MAKE THIS A LIST
-    # 
-    # 
-    # cluster_points <- reactiveVal(TRUE)  # default state
-    # observeEvent(input$toggle_clustering, {
-    #   if (req(input$data_choice) == 'EA pollution inventory 2021') {
-    #     cluster_points(!cluster_points())
-    #   }
-    # })
-    
-    
+
     ## if we later want to do some more sophisticated logic
     ## we can add reactives to this list
     list(return_value = return_value, 
          filtered_data = filtered_data,
-         map_options = map_options) #, legend_data = legend_data)
+         map_options = map_options) 
   })
 }
 
