@@ -6,7 +6,6 @@
 metals_choices <- c('Cd','Pb','Hg')
 SGARs_choices <- c('Bromadiolone', 'Difenacoum', 'Brodifacoum', 'ΣSGARs' )
 
-
 osg_parse2 <- function(grid_refs) { 
   # error handling and randomize if only 10km is avail.
   out <- tryCatch(
@@ -79,6 +78,34 @@ data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance 
   
   data <- read_parquet("datasets/EA_pollution_inventory/2021 Pollution Inventory Dataset.parquet")
     
+  # fix data error mannually, still has points outside the coast in 2026:
+  # data %>% filter(`SITE POSTCODE` == "HU11 4JH")
+  
+  fix_EA_condition_address = "Carricks Farm Coniston East Yorkshire"
+  
+  data <- data %>%
+    mutate(
+      EASTING  = if_else(`SITE ADDRESS` == fix_EA_condition_address, 512430, EASTING),
+      NORTHING   = if_else(`SITE ADDRESS` == fix_EA_condition_address, 436800, NORTHING ),
+      Longitude    = if_else(`SITE ADDRESS` == fix_EA_condition_address, -0.294, Longitude ),
+      Latitude    = if_else(`SITE ADDRESS` == fix_EA_condition_address, 53.8, Latitude )
+    ) %>%
+    mutate(
+      EASTING  = if_else(`OPERATOR NAME` == "AmeyCespa (East) Limited", 548327, EASTING),
+      NORTHING   = if_else(`OPERATOR NAME` == "AmeyCespa (East) Limited", 267909, NORTHING ),
+      Longitude    = if_else(`OPERATOR NAME` == "AmeyCespa (East) Limited", 0.1733, Longitude ),
+      Latitude    = if_else(`OPERATOR NAME` == "AmeyCespa (East) Limited", 52.289, Latitude )
+    )
+  
+  
+  # Fix make all Regulated_Industry_Sector uppercase 
+  data <- data %>%
+    mutate(
+      Regulated_Industry_Sector  = if_else(`Regulated_Industry_Sector` == "combustion", "Combustion", Regulated_Industry_Sector)
+    )
+  
+  
+  #data$Regulated_Industry_Sector  <- toupper(data$Regulated_Industry_Sector )
   
   # get unique substance and industry names
   unique_substance_names <- sort(unique(data$substance_name))
@@ -109,9 +136,10 @@ data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance 
     
     
     filtered_data <- filtered_data %>%
-      mutate(quantity_released_tons = quantity_released_kg/1000) %>% 
-      mutate(log_quantity_released_tons = log(quantity_released_tons + 1))
-      
+      mutate( quantity_released_tons = as.integer(quantity_released_kg)/1000,
+              log_quantity_released_tons =  log(quantity_released_tons + 1)
+      )
+             
     
     # # Calculate the minimum and maximum values
     # min_value <- min(filtered_data$quantity_released_kg)
@@ -186,26 +214,57 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   
   ref_gcms = ref_gcms %>% filter(Compound_Name == CompoundName) %>% 
     dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`)
+  # 
+  # #### data to parquet
+  # fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
+  # fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
+  # 
+  # fp_lcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_LCMS.csv'
+  # fp_gcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_GCMS.csv'
+  # 
+  # 
+  # data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
+  # 
+  # data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
+  # 
+  # data_lcms_26 <- read.csv(fp_lcms_26) %>% rename(method = METHOD) %>%  select(where(~ !all(is.na(.)))) %>% mutate(LOD = as.numeric(LOD))
+  # 
+  # data_gcms_26  <- read.csv(fp_gcms_26) %>% mutate(method = METHOD) %>%  select(where(~ !all(is.na(.))))%>% mutate(LOD = as.numeric(LOD))
+  # 
+  # #data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
+  # 
+  # data_gcms <- bind_rows(data_gcms,data_lcms, data_lcms_26, data_gcms_26) # rbind gcms and lcms
+  # 
+  # 
+  # #   filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
+  # 
+  # 
+  # 
+  # # Filter out rows with NA values (maybe should keep)
+  # filtered_data_gcms <- data_gcms[!is.na(data_gcms$Concentration), ]
+  # 
+  # # filter data that is within UK inland, does this take long?
+  # uk <- ne_countries(scale = "small", country = "United Kingdom", returnclass = "sf")
+  # points_sf <- st_as_sf(filtered_data_gcms, coords = c("Longitude", "Latitude"), crs = 4326)
+  # points_in_uk <- st_filter(points_sf, uk)
+  # filtered_data_gcms <- points_in_uk %>%
+  #   st_drop_geometry() %>%
+  #   bind_cols(
+  #     st_coordinates(points_in_uk) %>% as.data.frame() %>% setNames(c("Longitude", "Latitude"))
+  #   )
+  # # # save all files to parquet
+  # write_parquet(filtered_data_gcms , "datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
+  # 
+  ## END data to parquet
   
-  fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
-  fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
+  filtered_data_gcms <- read_parquet("datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
   
-  data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
-  
-  data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
-  
-  data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
-  
-  #filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
   
   # Filter the data based on the selected criteria
-  filtered_data_gcms <- data_gcms %>%
+  filtered_data_gcms <- filtered_data_gcms %>%
     filter(Compound_Name == CompoundName,
            year >= start_year,
            year <= end_year)
-  
-  # Filter out rows with NA values in the 'quantity_released_kg' column
-  filtered_data_gcms <- filtered_data_gcms[!is.na(filtered_data_gcms$Concentration), ]
   
   # Calculate the minimum and maximum values
   min_value <- min(filtered_data_gcms$Concentration)
@@ -386,8 +445,20 @@ data_process_pbms <- function(var_biota = 'buzzard',
     sparrowhawk_SGARs_long <- sparrowhawk_SGARs %>% rename(ΣSGARs = Sum_SGAR) %>% tidyr::pivot_longer(cols = Difenacoum:ΣSGARs)
     sparrowhawk_choices <- SGARs_choices
     
+
+    
     filtered_data = sparrowhawk_SGARs %>% rename(year = YEAR) %>% 
       mutate(biota = 'Sparrowhawk') %>% rename( `ΣSGARs`= Sum_SGAR )
+    
+    
+    # manually fix wrong points:
+    filtered_data <- filtered_data %>% 
+      mutate(
+      EAST  = if_else(BIRD == 62, 458600, EAST),
+      NORTH   = if_else(BIRD == 62, 223600, NORTH ),
+      long     = if_else(BIRD == 62, -1.1496, long  ),
+      lat     = if_else(BIRD == 62, 51.9078, lat )
+      )
   } else {
   }
   
@@ -632,7 +703,7 @@ data_process_pesticide_risk <- function(insect_choice = 'honeybees',
   filename = file.path(folder,'data', insect_choice,longname)
   print(filename)
   
-  my_raster <- terra::rast(filename) #[[paste0('y_',as.character(year_choice))]] # choose band
+  my_raster <- terra::rast(filename)[[paste0('y_',as.character(year_choice))]] # choose band
   return(my_raster)
 }
 
@@ -657,6 +728,14 @@ data_process_CIP <- function(NameDeterminandName='carbamazepine', year =  2020){
   # append long lat of treatment plant (Longitude, Latitude = 0): TODO
   # data_CIP %>% group_by(Latitude,Longitude) %>% distinct(TreatmentPlant) %>% arrange(Latitude)
   
+  ## join guess lat/lon
+  guess_lat_lon <- read_csv('datasets/CIP data/guess_lat_lon.txt')
+  data_CIP <- data_CIP %>% 
+    left_join(guess_lat_lon,by = join_by(TreatmentPlant)) %>% 
+    mutate(Latitude = if_else(Latitude == 0, Guess_lat, Latitude),
+           Longitude = if_else(Longitude == 0, Guess_lon, Longitude)) %>% 
+    dplyr::select(-Guess_lon, Guess_lat)
+    
   # # data can be monthly, summarize data by site to yearly ==>> not working yet
   # data_CIP = data_CIP %>% 
   #   

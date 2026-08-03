@@ -2,7 +2,7 @@
 # loaded at start up, be careful with performance, PFAS: 10ms, APIENS 2x10ms
 
 unique_industry_sector <- c("Agriculture","Biowaste Treatment","Cement and Minerals",
-                            "Chemicals","combustion","Combustion","EfW","Food & Drink",
+                            "Chemicals","Combustion","EfW","Food & Drink",
                             "Hazardous Waste","Landfill","Metals","Metals Recycling",
                             "No Far Sector","Non-Hazardous & Inert","Nuclear",
                             "Oil and Gas","Paper and textiles",
@@ -11,6 +11,7 @@ unique_industry_sector <- c("Agriculture","Biowaste Treatment","Cement and Miner
 
 pbms_biota_choices =  c('Buzzard','Sparrowhawk','Otter')
 unique_pfas_names <- data_process_pfas()[['unique_pfas_names']]
+unique_pfas_names <- unique_pfas_names[3:length(unique_pfas_names)] # drop "4:2 FTSA" "6:2 FTSA"
 
 unique_apiens_varnames <- data_process_apiens()[['unique_apiens_varnames']][-1] # drop first one
 unique_apiens_NECD <- data_process_apiens()[['unique_apiens_NECD']]
@@ -22,7 +23,7 @@ unique_EMPODAT_varnames <- data_process_NORMAN_EMPODAT()[['unique_varnames']]
 
 ea_gcms_choices <-
   list(`Pharmaceuticals` = list( "Diphenyl ether","Ibuprofen", "Ketamine","Mirtazapine", "Phenanthrene"), #"Benzothiazole",
-     `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole (Terbuconazole)", "Thiabendazole"),
+     `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole"="Tebuconazole (Terbuconazole)", "Thiabendazole"),
      `Herbicides` = list("Atrazine","Diuron","Metolachlor","Simazine"),
      `Insecticides` = list("Diflufenican", "Fipronil", "Imidacloprid"),
      `Others` = list("Caffeine","Cocaine", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol"))
@@ -36,7 +37,9 @@ ea_pollution_sliders <- function(id) {
     
     selectInput(NS(id,"IndustrySector"), "Choose Industry Sector:",
                 unique_industry_sector
-    )
+    ),
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE),
+    
   )
 }
 
@@ -62,10 +65,12 @@ ea_gcms_sliders <- function(id) {
     # code("code displays your text similar to computer code"),
     
     sliderInput((NS(id,"year_slider")), "Select Year Range:",
-                min = min(2013), max = max(2024),
+                min = min(2013), max = max(2026),
                 sep = "",
                 value = c("2020", "2021"), animate = FALSE
-    ) #,
+    ) ,
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
+    
     
     # currently stuck within module >> needs exposing and pass to map to switch_map()
     # input_switch((NS(id,'PnecRiskmap')), 
@@ -95,7 +100,8 @@ CIP_sliders <- function(id) {
     selectInput(NS(id,"variable_choices"), "Choose variable:",
                 choices = unique_CIP_varnames,
                 selected = "fipronil"
-    )
+    ),
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
   )
 }
 
@@ -156,7 +162,8 @@ pbms_sliders <- function(id) {
       # selectInput(NS(id,'var_metal_map_sgl'), 'Choose a metal species:', choices = metals_choices, multiple = FALSE)
       
       # change to only slider, conditional on biota choice, update choices
-      selectInput(NS(id,'var_map_sgl'), 'Choose a metal or SGARs species:', choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices), multiple = FALSE)
+      selectInput(NS(id,'var_map_sgl'), 'Choose a metal or SGARs species:', choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices), multiple = FALSE),
+      checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
       
   )
 }
@@ -179,12 +186,28 @@ pfas_sliders <- function(id) {
    selectInput(NS(id,"transform"), "Choose transform method:",
                choices =c("Natural Log")#c("Natural Log", "Base 10 Log")
    ),
-   checkboxInput("heatmap", "Show Heatmap", FALSE)
+   checkboxInput("heatmap", "Show Heatmap", FALSE),
+   checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE)
   )
 }
 
 rain_sliders <- function(id) {
   tagList(
+    tags$head(tags$style(HTML(" 
+
+  .irs--shiny .irs-bar, 
+
+  .irs--shiny .irs-bar-edge { 
+
+    background: transparent; 
+
+    border: none; 
+
+    box-shadow: none; 
+
+  } 
+
+"))) , 
     sliderInput(NS(id,"year_slider"), "Select Year:",
                 min = 2000, max = 2023, 
                 value = 2023, 
@@ -212,8 +235,8 @@ apiens_sliders <- function(id) {
     # )
     selectInput(NS(id,"variable_choices"), "Choose variable:",
                 choices = unique_apiens_varnames[1:20], #c("NH4-N","NO3-N"),
-                selected = c("NH4-N","NO3-N"), #unique_apiens_varnames[2], #c("NH4-N","NO3-N")
-                multiple = TRUE
+                selected = c("NH4-N"), #unique_apiens_varnames[2], #c("NH4-N","NO3-N")
+                multiple = FALSE
     ),
     selectInput(NS(id,"necd_choices"), "Choose NECD classes:",
                 choices =unique_apiens_NECD,
@@ -228,7 +251,7 @@ apiens_sliders <- function(id) {
 euso_sliders <- function(id) {
   tagList(
     selectInput(NS(id,"euso_var_choices"), "Choose variable:",
-                choices = c('Cu','Cd','Zn') 
+                choices = c('Cu')#,'Cd','Zn') 
     ),
     p()
   )
@@ -263,6 +286,7 @@ IYR_sliders <- function(id) {
 
 pesticide_risk_sliders <- function(id) {
   tagList(
+    
     selectInput(NS(id,"insect_choice"), "Choose insect species:",
                 choices =list.dirs('datasets/pesticide_risk_to_insects/data',
                                    full.names = FALSE, recursive = FALSE),

@@ -18,11 +18,12 @@ dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS d
                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
                     "Pesticde risk to insects",
-                    "UKWIR Chemical Investigation Programme (CIP)",
+                    "UKWIR Chemical Investigation Programme (CIP)"
                     # "Wastewater treatment works (WwTW) info",
-                    "NORMAN EMPODAT database",
+                    #"NORMAN EMPODAT database",
                     # "Lough Neagh Catchment Chemistry",
-                    "Custom file upload (.csv)")
+                    #"Custom file upload (.csv)"
+                    )
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
 
@@ -220,8 +221,6 @@ datselect_mod_server <-  function(id) {
     filtered_data <- reactive({
       type <- req(input$data_choice)
       print(type)
-      legend_choices <- NULL
-      
       if (length(type) == 0){
         #data_process_EA_pollution(IndustrySector = 'Water Industry')[[1]] %>% head() # not needed,  slow<< Hack to return some valid data while it waits for user input
               
@@ -255,7 +254,7 @@ datselect_mod_server <-  function(id) {
         } else if (type == "AgZero+ Input to Yield Ratio (IYR)") {
           data_process_IYR(IYR_choice = input$IYR_choice)  
         } else if (type == "Pesticde risk to insects") {
-          data_process_pesticide_risk(year_choice = input$slider,
+          data_process_pesticide_risk(year_choice = input$year_slider,
                                       insect_choice = input$insect_choice,
                                  chemical = input$chemical)  
         } else if (type == "Custom file upload (.csv)") {
@@ -282,9 +281,19 @@ datselect_mod_server <-  function(id) {
     print("filtered_data: ")
     print(filtered_data())
     
+    ## store whether to cluster points on map
+    map_options <- reactive({
+      type <- req(input$data_choice)
+      if (length(type) > 0){
+        reactiveValuesToList(input)
+      }
+    })
+
     ## if we later want to do some more sophisticated logic
     ## we can add reactives to this list
-    list(return_value = return_value, filtered_data = filtered_data )#, legend_data = legend_data)
+    list(return_value = return_value, 
+         filtered_data = filtered_data,
+         map_options = map_options) 
   })
 }
 
