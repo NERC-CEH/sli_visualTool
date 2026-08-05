@@ -216,21 +216,60 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
     dplyr::select(method, USE, LOD,`Lowest PNEC Freshwater [µg//l]`)
   # 
   # #### data to parquet
+  
+  #### data to parquet
   # fp_lcms = 'datasets/EA_water_quality_GCMS_LCMS/LCMS Target and Non-Targeted Screening.csv'
   # fp_gcms = 'datasets/EA_water_quality_GCMS_LCMS/GCMS Target and Non-Targeted Screening _channel outliers removed.csv'
   # 
   # fp_lcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_LCMS.csv'
   # fp_gcms_26 = 'datasets/EA_water_quality_GCMS_LCMS/Canary_Open_Data_2024-2026_GCMS.csv'
   # 
+  # ## Note the pre-2026 versions may not contain hyphens for CAS numbers >> use with caution, check most common chemical names
   # 
   # data_lcms <- read.csv(fp_lcms) %>% mutate(method = 'LC-MS')
   # 
   # data_gcms <- read.csv(fp_gcms) %>% mutate(method = 'GC-MS')
   # 
-  # data_lcms_26 <- read.csv(fp_lcms_26) %>% rename(method = METHOD) %>%  select(where(~ !all(is.na(.)))) %>% mutate(LOD = as.numeric(LOD))
+  # data_lcms_26 <- read.csv(fp_lcms_26) %>% rename(method = METHOD, Sample_datetime = SAMPLE_DATETIME) %>%  
+  #   select(where(~ !all(is.na(.)))) %>% 
+  #   rename(
+  #     Sample_Site_ID = SAMPLE_SITE_ID,
+  #     Screening_Method_Details = SCREENING_METHOD_DETAILS,
+  #     Concentration = CONCENTRATION,
+  #     CAS_Number = CAS_NUMBER,
+  #     Compound_Name = COMPOUND_NAME,
+  #     COUNTRY = Country,
+  #     #SMC_DESC = SMPT_DESC#,
+  #     #Spectral_Fit  = Spectural_Fit      
+  #   ) %>%
+  #   mutate(
+  #     LOD = na_if(LOD, "NULL"),
+  #     LOD = as.numeric(LOD),
+  #     Spectral_Fit = as.logical(Spectral_Fit),
+  #     SMPT_NORTHING = as.numeric(SMPT_NORTHING),
+  #     SPT_DESC = NA_character_,
+  #     less_than = NA,
+  #     
+  #   ) 
   # 
-  # data_gcms_26  <- read.csv(fp_gcms_26) %>% mutate(method = METHOD) %>%  select(where(~ !all(is.na(.))))%>% mutate(LOD = as.numeric(LOD))
-  # 
+  # data_gcms_26  <- read.csv(fp_gcms_26) %>% rename(method = METHOD, Sample_datetime = SAMPLE_DATETIME) %>%  
+  #   select(where(~ !all(is.na(.))))%>% 
+  #   rename(
+  #     Sample_Site_ID = SAMPLE_SITE_ID,
+  #     Screening_Method_Details = SCREENING_METHOD_DETAILS,
+  #     Concentration = CONCENTRATION,
+  #     CAS_Number = CAS_NUMBER,
+  #     Compound_Name = COMPOUND_NAME,
+  #     COUNTRY = Country,
+  #     Spectral_Fit = Spectural_Fit                         
+  #   ) %>%
+  #   mutate(
+  #     LOD = na_if(LOD, "NULL"),
+  #     LOD = as.numeric(LOD),
+  #     Spectral_Fit = as.logical(Spectral_Fit), # does not exist
+  #     SMPT_NORTHING = as.numeric(SMPT_NORTHING),
+  #     LOD = as.numeric(LOD)
+  #   ) 
   # #data_gcms <- rbind(data_gcms,data_lcms) # rbind gcms and lcms
   # 
   # data_gcms <- bind_rows(data_gcms,data_lcms, data_lcms_26, data_gcms_26) # rbind gcms and lcms
@@ -238,7 +277,38 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   # 
   # #   filtered_data_gcms <- subset(data_gcms, Compound_Name == CompoundName)
   # 
+  # ######## class check code ##########
+  # all_cols <- Reduce(
+  #   union,
+  #   list(
+  #     names(data_lcms),
+  #     names(data_gcms),
+  #     names(data_lcms_26),
+  #     names(data_gcms_26)
+  #   )
+  # )
   # 
+  # get_classes <- function(df, cols) {
+  #   sapply(cols, function(col) {
+  #     if (col %in% names(df)) {
+  #       class(df[[col]])[1]
+  #     } else {
+  #       NA_character_
+  #     }
+  #   })
+  # }
+  # 
+  # class_check <- data.frame(
+  #   column       = all_cols,
+  #   data_lcms    = get_classes(data_lcms, all_cols),
+  #   data_gcms    = get_classes(data_gcms, all_cols),
+  #   data_lcms_26 = get_classes(data_lcms_26, all_cols),
+  #   data_gcms_26 = get_classes(data_gcms_26, all_cols),
+  #   row.names = NULL
+  # )
+  # 
+  # class_check
+  # ##########################
   # 
   # # Filter out rows with NA values (maybe should keep)
   # filtered_data_gcms <- data_gcms[!is.na(data_gcms$Concentration), ]
@@ -255,6 +325,7 @@ data_process_EA_WQ_gcms <- function(fp_gcms = 'datasets/EA_water_quality_GCMS_LC
   # # # save all files to parquet
   # write_parquet(filtered_data_gcms , "datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
   # 
+
   ## END data to parquet
   
   filtered_data_gcms <- read_parquet("datasets/EA_water_quality_GCMS_LCMS/GCMS_LCMS.parquet")
