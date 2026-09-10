@@ -659,7 +659,7 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         colors = c( rev(OkabeItoPal), "gray" ),   # 6 category colors + NA color = 7
         labels = c("NA", "below LOD", "RQ < 1", "RQ (1,10)", "RQ (10,100)",
                    "RQ (100,1000)", "RQ > 1000") %>% rev(),  # 7 labels to match
-        title    = htmltools::HTML(paste0("legend_title", "<br>", "Risk Quotient (RQ)")),
+        title    = htmltools::HTML(paste0(legend_title, "<br>", "Risk Quotient (RQ)")),
         position = "bottomright"
       )
       
