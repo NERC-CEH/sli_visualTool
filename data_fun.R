@@ -767,11 +767,18 @@ data_process_pesticide_risk <- function(insect_choice = 'honeybees',
                                         chemical = 'insecticide') {
   # 12 bands containing data collected every other year from 1994 to 2016
   
+  #### version 1
+  # folder = 'datasets/pesticide_risk_to_insects_V1'
+  # chemical = chemical %>% tolower() #%>% str_replace_all(" ","_") # lowercase underscore
+  # longname = paste0(str_replace(insect_choice,'.-',''), '_risk_', chemical, '.tif')
+  # filename = file.path(folder,'data', insect_choice,longname)
+  # print(filename)
   
+  #### version 2
   folder = 'datasets/pesticide_risk_to_insects'
   chemical = chemical %>% tolower() #%>% str_replace_all(" ","_") # lowercase underscore
   longname = paste0(str_replace(insect_choice,'.-',''), '_risk_', chemical, '.tif')
-  filename = file.path(folder,'data', insect_choice,longname)
+  filename = file.path(folder,longname)
   print(filename)
   
   my_raster <- terra::rast(filename)[[paste0('y_',as.character(year_choice))]] # choose band

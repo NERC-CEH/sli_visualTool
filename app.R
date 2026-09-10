@@ -31,14 +31,15 @@ library(forcats) # factor re-ordering
 library(rnaturalearth)
 library(bsicons)
 
-load('modules/timeline_data.RData', envir = .GlobalEnv)  # temp fix
+load('modules/timeline_data_Aug26.RData', envir = .GlobalEnv)  # temp fix
+
 
 
 source('data_fun.R')
 source('map_fun.R')
 source('modules/data_modules.R')
-source('modules/chemical_timeline_tab.R')
-source('modules/timeline_fun.R')
+source('modules/chemical_timeline_tab_aug.R')
+source('modules/timeline_fun_Aug.R')
 source('theme_elements.R')
 # data(quakes)
 
