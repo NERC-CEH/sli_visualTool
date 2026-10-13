@@ -1074,7 +1074,10 @@ server <- function(input, output, session) {
                                       #"GeoportailFrance.orthos"
       ),
       overlayGroups = c(paste0(1:length(inserted_ids), '. ',handler_list[1:length(inserted_ids)]),
-                        "IHU","LCM 2021 1km dominant target", "NASA Earth at Night 2012"
+                        "IHU","LCM 2021 1km dominant target",
+                        "JNCC Protected areas",
+                        "JNCC Protected areas (NI)",
+                        "NASA Earth at Night 2012"
       ),
       position = 'topleft')
 

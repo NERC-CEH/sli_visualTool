@@ -1,5 +1,7 @@
 # functions for the leaflet map
 
+source('legend_fun.R')
+
 OkabeItoPal <- c('lightblue','#009E73','#F0E442','#E69F00','#D55E00','black')
 
 # Create a data frame for colour-blind friendly LCM colour palette with the RGB values and class names
@@ -517,6 +519,49 @@ map_fun_CIP <- function(map, data, fillColor= "blue", legend_title = "CIP",
 }
 
 
+## TEST:data = data_process_Hunter_NI()
+## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$Value)
+## leaflet() %>% addTiles() %>% map_fun_Hunter_NI(data = data, fillColor=fillColor)
+map_fun_Hunter_NI <- function(map, data, fillColor= "blue", legend_title = "Hunter_NI",
+                        cluster_points = FALSE){
+  
+  print(data)
+  
+  fill <- if (is.function(fillColor)) fillColor(data$Value) else fillColor
+  
+  # # apply jittering
+  # data$Latitude2 <- jitter(data$Latitude, factor = 0.001)
+  # data$Longitude2 <- jitter(data$Longitude, factor = 0.001)
+  # 
+  data <- data %>%
+    arrange(desc(is.na(Value)), Value)  # highest value last = drawn on top
+  
+  map  %>%
+    addCircleMarkers(
+      data = data,
+      lng = ~Long, lat = ~Lat, radius = 8,
+      # clusterOptions = markerClusterOptions(),
+      popup = ~paste(
+        "<b>Sample ID: </b>", `Sample ID`, "<br/>",
+        "<b>Depth : </b>", Depth      , "<br/>",
+        "<b>Catchment : </b>", Catchment  , "<br/>",
+        "<b>Sample Value: </b>", Value , "<br/>",
+        "<b>Sample Date   : </b>", Date , "<br/>",
+        "<b>Units: </b>", Units, "<br/>",
+
+        
+        sep = ""
+      ),
+      color = "black",   # Outline color
+      fillColor = fill, # ~pal(transform_value), 
+      fillOpacity = 0.8, # Opacity of the fill color
+      weight = 0.2,
+      group = legend_title,
+      clusterOptions = if (cluster_points) markerClusterOptions() else NULL
+    ) 
+  
+}
+
 ## TEST:data = data_process_NORMAN_EMPODAT()[[1]]
 ## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$SampleValue)
 ## leaflet() %>% addTiles() %>% map_fun_NORMAN_EMPODAT(data = data, fillColor=fillColor)
@@ -556,6 +601,148 @@ map_fun_NORMAN_EMPODAT <- function(map, data, fillColor= "blue", legend_title = 
       group = legend_title
     ) 
   
+}
+
+## TEST:data = data_process_LoughNeagh()[[1]]
+## TEST:data = data_process_LoughNeagh(LoughNeagh_option = 'chemistry',DeterminandKey = "ALK (mg/l)")[[1]]
+## fillColor = colorNumeric(palette = brewer.pal(9, 'Blues'), domain = data$Value)
+# ## leaflet() %>% addTiles() %>% map_fun_LoughNeagh(data = data, fillColor=fillColor)
+# map_fun_LoughNeagh <- function(map, data, fillColor= "blue", legend_title = "LoughNeagh",
+#                               cluster_points = FALSE){
+#   
+#   print(data)
+#   
+#   fill <- if (is.function(fillColor)) fillColor(data$Value) else fillColor
+#   
+#   # # apply jittering
+#   # data$Latitude2 <- jitter(data$Latitude, factor = 0.001)
+#   # data$Longitude2 <- jitter(data$Longitude, factor = 0.001)
+#   # 
+#   data <- data %>%
+#     arrange(desc(is.na(Value)), Value)  # highest value last = drawn on top
+#   
+#   map  %>%
+#     addCircleMarkers(
+#       data = data,
+#       lng = ~Long, lat = ~Lat, radius = 8,
+#       # clusterOptions = markerClusterOptions(),
+#       popup = ~paste(
+#         "<b>Station Code: </b>", `Station Code`, "<br/>",
+#         "<b>Location : </b>", Location, "<br/>",
+#         "<b>Grid Reference : </b>", `Grid Reference`  , "<br/>",
+#         "<b>Easting : </b>", Easting  , "<br/>",
+#         "<b>Northing  : </b>", Northing   , "<br/>",
+#         "<b>Sample Date   : </b>", Date , "<br/>",
+#         "<b>Year : </b>", Year , "<br/>",
+#         
+#         
+#         sep = ""
+#       ),
+#       color = "black",   # Outline color
+#       fillColor = fill, # ~pal(transform_value), 
+#       fillOpacity = 0.8, # Opacity of the fill color
+#       weight = 0.2,
+#       group = legend_title,
+#       clusterOptions = if (cluster_points) markerClusterOptions() else NULL
+#     ) 
+#   
+# }
+
+
+# Lough Neagh map with a colour map that handles missing (NA) and below-LOD values
+#
+# Point classes:
+#   detected  -> coloured on a numeric palette built from detected values only
+#   below_lod -> white fill with a dark outline ("<" in Value or Q column)
+#   missing   -> grey, semi-transparent
+
+# Classify values and extract numbers, e.g. "0.5" -> detected, "<0.5" -> below_lod, NA -> missing
+ln_classify_values <- function(value, q = NULL) {
+  value_chr <- trimws(as.character(value))
+  below_lod <- !is.na(value_chr) & grepl("^<", value_chr)
+  if (!is.null(q)) below_lod <- below_lod | (!is.na(q) & grepl("<", q))
+  
+  num <- suppressWarnings(as.numeric(gsub("[<> ]", "", value_chr)))
+  
+  status <- ifelse(below_lod, "below_lod",
+                   ifelse(is.na(num), "missing", "detected"))
+  
+  data.frame(num = num, status = status, stringsAsFactors = FALSE)
+}
+
+
+map_fun_LoughNeagh <- function(map, data,
+                               fillColor      = NULL,      # kept for compatibility; palette is built here
+                               legend_title   = "LoughNeagh",
+                               cluster_points = FALSE,
+                               palette        = "Blues",
+                               log_scale      = FALSE,     # log10 colour scale for skewed chemistry data
+                               units          = "",        # e.g. " µg/l", appended in popups
+                               lod_color      = "#FFFFFF",
+                               na_color       = "#9E9E9E") {
+  
+  # ---- classify values -------------------------------------------------------
+  q   <- if ("Q" %in% names(data)) data$Q else NULL
+  cls <- ln_classify_values(data$Value, q)
+  data$value_num <- cls$num
+  data$status    <- cls$status
+  
+  detected <- data$status == "detected"
+  
+  # log scale only if all detected values are positive
+  use_log <- log_scale && any(detected) && all(data$value_num[detected] > 0)
+  data$value_plot <- if (use_log) log10(data$value_num) else data$value_num
+  
+  # ---- palette from detected values only (LOD and NA don't stretch the scale) --
+  pal <- if (any(detected)) {
+    colorNumeric(palette, domain = data$value_plot[detected], na.color = na_color)
+  } else NULL
+  
+  fill <- rep(na_color, nrow(data))
+  fill[data$status == "below_lod"] <- lod_color
+  if (!is.null(pal)) fill[detected] <- pal(data$value_plot[detected])
+  data$fill <- fill
+  
+  # ---- popup value text ------------------------------------------------------
+  fmt <- function(x) format(signif(x, 3), big.mark = ",", scientific = FALSE, trim = TRUE)
+  data$value_label <- ifelse(
+    data$status == "detected", paste0(fmt(data$value_num), units),
+    ifelse(data$status == "below_lod",
+           ifelse(is.na(data$value_num), "Below LOD",
+                  paste0("&lt;", fmt(data$value_num), units, " (below LOD)")),
+           "No data")
+  )
+  
+  # ---- draw order: missing, then below LOD, then detected (highest on top) ---
+  data <- data %>%
+    arrange(factor(status, levels = c("missing", "below_lod", "detected")), value_num)
+  
+  # ---- markers ---------------------------------------------------------------
+  map <- map %>%
+    addCircleMarkers(
+      data = data,
+      lng = ~Long, lat = ~Lat, radius = 8,
+      popup = ~paste(
+        "<b>Value: </b>", value_label, "<br/>",
+        "<b>Station Code: </b>", `Station Code`, "<br/>",
+        "<b>Location: </b>", Location, "<br/>",
+        "<b>Grid Reference: </b>", `Grid Reference`, "<br/>",
+        "<b>Easting: </b>", Easting, "<br/>",
+        "<b>Northing: </b>", Northing, "<br/>",
+        "<b>Sample Date: </b>", Date, "<br/>",
+        "<b>Year: </b>", Year, "<br/>",
+        sep = ""
+      ),
+      color       = "black",
+      fillColor   = ~fill,
+      fillOpacity = ~ifelse(status == "missing", 0.4, 0.85),
+      weight      = ~ifelse(status == "below_lod", 1.5, 0.2),
+      group       = legend_title,
+      clusterOptions = if (cluster_points) markerClusterOptions() else NULL
+    )
+
+  
+  map
 }
 
 # this is a good horizontal legend: https://stackoverflow.com/questions/60838128/how-to-make-a-leaflet-legend-horizontal
@@ -1037,8 +1224,144 @@ switch_map <- function(m, map_data, input_choice, legend_title='legend', palette
         # numberFormat = function(x)
         #   format(round(exp(x) - 1, 3), trim = TRUE)
       )
-  }
+  } else if (input_choice == "NI Pharmaceuticals (2024)") {
+    
+    
+    if (map_options$toggle_RQ == TRUE) {
+    
+    ############ Hunter NI: RQ factpal ################  
+      
+    factpal <- colorFactor(OkabeItoPal, c("Not detected", "RQ < 1", "RQ (1,10)", "RQ (10,100)", "RQ (100,1000)", "RQ > 1000"),
+                           ordered=TRUE,
+                           na.color = "gray")
+    
+    head(map_data)
+    
+    m = m %>% 
+      map_fun_Hunter_NI(
+        map_data,
+        fillColor =  ~ factpal(RQ_label),
+        cluster_points = map_options$toggle_clustering,
+        legend_title = legend_title
+      ) %>% 
+      addLegend(
+        colors = c( rev(OkabeItoPal), "gray" ),   # 6 category colors + NA color = 7
+        labels = c("NA", "Not detected", "RQ < 1", "RQ (1,10)", "RQ (10,100)",
+                   "RQ (100,1000)", "RQ > 1000") %>% rev(),  # 7 labels to match
+        title    = htmltools::HTML(paste0(legend_title, "<br>", "Risk Quotient (RQ)")),
+        position = "bottomright"
+      )
+    } else {
+      
+      ############ Hunter NI: concentration ################  
+      vals <- map_data$Value
+      
+      # domain <- if (all(is.na(vals)) || all(vals[!is.na(vals)] == 0)) c(0, 1) else vals # check if all values = 0
+      
+      domain = vals
+      
+      fillColor = colorNumeric(palette = brewer.pal(9, palette_name),
+                               domain = domain
+      )
+      
+      # break_values <- seq(min(map_data$log_Concentration), max(map_data$log_Concentration), length.out = 5)
+      
+      m = m %>% map_fun_Hunter_NI(
+        map_data,
+        fillColor =  ~ fillColor(Value),
+        cluster_points = map_options$toggle_clustering,
+        legend_title = legend_title
+      ) %>%
+        # addLegend(data = map_data,
+        #           position = "bottomright",
+        #           pal = fillColor,
+        #           values = ~map_data$log_Concentration,
+        #           title = paste0(legend_title ,"</br>","Concentration ug/l"),
+        #           opacity = 1,
+        #           group = legend_title,
+        #           labFormat = labFormat_transform,
+        #           orientation = "horizontal")
+        
+        
+        addLegendNumeric(
+          data = map_data,
+          position = "bottomright",
+          pal = fillColor,
+          values = ~ map_data$Value,
+          title = htmltools::HTML(paste0(
+            legend_title, "<br>", "Concentration ng/l"
+          )),
+          shape = "rect",
+          orientation = "horizontal",
+          width = 200,
+          height = 10 #,
+          # numberFormat = function(x)
+          #   format(round(exp(x) - 1, 3), trim = TRUE)
+        )
+      
+    
+    }
+    
+  } else if (input_choice == "Lough Neagh Chemistry") {
+    
+      
+    ############ LoughNeagh: concentration ################  
+    ############ Lough Neagh: palette and legends are built inside map_fun_LoughNeagh ############
+    if (is.null(map_data) || nrow(map_data) == 0) {
+      showNotification("No data available for this selection.",
+                       type = "error", duration = 5)
+    } else {
+      # 1. set-up: everything the pipe below needs
+      is_chem  <- identical(tolower(map_options$LoughNeagh_option), "chemistry")
+      q        <- if ("Q" %in% names(map_data)) map_data$Q else NULL
+      status   <- classify_lod_values(map_data$Value, q)$status
+      pal_info <- make_detected_palette(map_data$Value, q,
+                                        palette_name = palette_name,
+                                        log_scale    = is_chem)
+      
+      # 2. markers, then legends
+      m <- m %>%
+        map_fun_LoughNeagh(map_data,
+                           fillColor      = pal_info$pal,
+                           log_scale      = is_chem,
+                           palette        = palette_name,
+                           cluster_points = isTRUE(map_options$toggle_clustering),
+                           legend_title   = legend_title) %>%
+        add_detected_legend(pal_info,
+                            title    = legend_title,
+                            subtitle = if (is_chem) "Concentration" else "Index value",
+                            group    = legend_title) %>%
+        add_lod_na_legend(status, group = legend_title)
+      
+      
+      
+      # %>% 
+      #   addLegendNumeric(
+      #     data = map_data,
+      #     position = "bottomright",
+      #     pal = fillColor,
+      #     values = ~ map_data$Value,
+      #     title = htmltools::HTML(paste0(
+      #       legend_title, "<br>", "Concentration ng/l"
+      #     )),
+      #     shape = "rect",
+      #     orientation = "horizontal",
+      #     width = 200,
+      #     height = 10 #,
+      #     # numberFormat = function(x)
+      #     #   format(round(exp(x) - 1, 3), trim = TRUE)
+      #   )
+      
+      
+      
+    }
   
+        
+
+      
+    
+
+}
   return(m)
   
 }

@@ -39,6 +39,23 @@ osg_parse2 <- function(grid_refs) {
   return(out)
 }
 
+# crs = 29902 (Irish grid)
+
+add_lonlat <- function(df, easting = "Easting", northing = "Northing", crs = 29902) {
+  df[[easting]]  <- as.numeric(df[[easting]])
+  df[[northing]] <- as.numeric(df[[northing]])
+  
+  ok <- !is.na(df[[easting]]) & !is.na(df[[northing]])
+  
+  xy <- df[ok, ] %>%
+    st_as_sf(coords = c(easting, northing), crs = crs, remove = FALSE) %>%
+    st_transform(4326) %>%
+    st_coordinates()
+  
+  df %>%
+    mutate(Long = NA_real_, Lat = NA_real_) %>%
+    { .$Long[ok] <- xy[, 1]; .$Lat[ok] <- xy[, 2]; . }
+}
 
 data_process_EA_pollution <- function(IndustrySector = 'Agriculture', substance = "all") {
 # TODO: could add different years
@@ -887,48 +904,104 @@ data_process_NORMAN_EMPODAT <- function(NameDeterminandName='carbamazepine', yea
 }
 
 
-data_process_LoughNeagh <- function(NameDeterminandName='carbamazepine', year =  2020){
-  ## quite slow to read, takes a few seconds
-  ## handle file issues
-  # 
-  # file = 'datasets/Northern Ireland data/LoughNeaghCatchmentChemistry2015-2024.CSV'
-  # raw <- readLines(file, encoding = "UTF-8", warn = FALSE)
-  # 
-  # # Replace invalid bytes safely
-  # clean <- iconv(raw, from = "UTF-8", to = "UTF-8", sub = "")
-  # 
-  # df <- read_csv(I(clean))
+data_process_LoughNeagh <- function(DeterminandKey='Number or Taxa (WHPT)',
+                                    LoughNeagh_option = 'invertebrates',
+                                    year =  2020){
+  if (LoughNeagh_option == 'invertebrates'){
+    data = read_csv('datasets/LoughNeagh/LoughNeaghCatchmentRiverInvertebrates2015-2024(in).csv') %>% 
+      mutate(Value = .data[[DeterminandKey]]) %>% 
+      dplyr::select(1:6, all_of("Value")) %>% 
+      mutate(Year = lubridate::year(lubridate::dmy(Date))) %>% 
+      filter(Year %in% year) %>% 
+      add_lonlat()
+    
+  } else if (LoughNeagh_option == 'chemistry') {
+    
+    n_cols <- 366
+    
+    types <- paste0(
+      strrep("?", 6),
+      substr(strrep("cd", ceiling((n_cols - 6) / 2)), 1, n_cols - 6)
+    )
+    
+    data = read_csv(
+      'datasets/LoughNeagh/LoughNeaghCatchmentChemistry2015-2024.CSV',
+      locale = locale(encoding = "ISO-8859-1"),   # or "latin1", whatever guess_encoding suggests
+      col_types = types,
+      name_repair = function(nms) {
+        q_idx <- which(nms == "Q")
+        nms[q_idx] <- paste0("Q_", nms[q_idx + 1])
+        nms
+      }
+    )
+    
+    id_cols <- c("Station Code", "Location", "Date", "Easting", "Northing", "Grid Reference")   # adjust to your actual ID columns
+    q_col   <- paste0("Q_", DeterminandKey)
+    has_q   <- q_col %in% names(data)
+    
+    if (!DeterminandKey %in% names(data)) {
+      stop("Lough Neagh: no data column for determinand '", DeterminandKey, "'")
+    }
+    
+    
+    # steps: Rename Value and Q for selected var >> filter by year >>
+    # drop extra columns
+    
+    data <- data %>%
+     # drop_na(all_of(DeterminandKey)) %>%
+      mutate(Value = .data[[DeterminandKey]],
+             Q     = if (has_q) .data[[q_col]] else NA_character_,
+             Year  = lubridate::year(lubridate::dmy(Date))) %>%
+      filter(between(Year, min(.env$year), max(.env$year))) %>%
+      dplyr::select(all_of(id_cols), Year, Value, Q) %>%
+      add_lonlat()
+    
+    
+  } 
+
   
-# 
-#   df = read_csv('datasets/Northern Ireland data/LoughNeaghCatchmentChemistry2015-2024.CSV',
-#                col_select = 1:20)   # first 20 columns
-# 
-#   
-#   # Step 1: fix column names (pair each Q with its variable)
-#   new_names <- names(df)
-#   
-#   for (i in seq_along(new_names)) {
-#     if (new_names[i] == "Q" && i > 1) {
-#       new_names[i] <- paste0(new_names[i - 1], "_Q")
-#     }
-#   }
-#   
-#   names(df) <- new_names
-#   
-#   # Step 2: pivot
-#   df_long <- df %>%
-#     pivot_longer(
-#       cols = -c(site, date),   # keep your ID columns here
-#       names_to = c("variable", ".value"),
-#       names_pattern = "(.*?)(_Q)?$"
-#     )
-#   
-#   df_long
-#   
-#   
-#   return(list(filtered_data_CIP = data_CIP,
-#               unique_CIP_varnames = list.files(directory) %>% substr(1,nchar(.)-8) %>% tolower()))
+  unique_varkey = read_csv('datasets/LoughNeagh/LoughNeaghCatchmentChemistry2015-2024DeterminandKey.CSV')
+  
+  return(list(filtered_data = data ,
+              unique_varkey = unique_varkey))
 }
+
+
+data_process_Hunter_NI <- function(NameDeterminandName='Carbamazepine', RQ =TRUE){
+ # source: https://doi.org/10.1039/d5em00435g
+  
+  if (RQ ==TRUE) {
+    data = read_csv("datasets/Hunter_NI/Hunter_et_al_NI_PPCP_RQs_All_Catchments_2024.csv")
+  } else {
+    data = read_csv("datasets/Hunter_NI/Hunter_et_al_NI_PPCP_Concentrations_All_Catchments_2024.csv")
+  }
+  
+  var_substance = colnames(data)
+  
+  filtered_data = data %>% 
+    mutate(Value = .data[[NameDeterminandName]]) %>% 
+    mutate(Units = if ("Units" %in% names(.)) Units else "risk quotient (dimensionless)") %>% 
+    select(1:6, all_of("Value"), all_of("Units"))
+  
+  if (RQ ==TRUE) {  
+    filtered_data = filtered_data %>% 
+      mutate( 
+        RQ_label = case_when(
+          Value == 0.0 ~ "Not detected",
+          Value != 0.0 & Value < 1.0 ~ "RQ < 1",
+          between(Value, 1.0, 10) ~ "RQ (1,10)",
+          between(Value, 10, 100) ~ "RQ (10,100)",
+          between(Value, 100, 1000) ~ "RQ (100,1000)",
+          Value >1000 ~ "RQ > 1000",
+          .default = NA
+        )
+      )
+  }
+  return(filtered_data=filtered_data)
+    
+}
+
+
 
 
 

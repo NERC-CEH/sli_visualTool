@@ -21,6 +21,22 @@ unique_CIP_varnames <- data_process_CIP()[['unique_CIP_varnames']]
 
 unique_EMPODAT_varnames <- data_process_NORMAN_EMPODAT()[['unique_varnames']]
 
+## not good
+# unique_LoughNeagh_keys <- setNames(data_process_LoughNeagh()[["unique_varkey"]]$`Determinand Code`, 
+#                                    data_process_LoughNeagh()[['unique_varkey']]$`Determinand Name`)
+
+LN_varkey <- data_process_LoughNeagh()[["unique_varkey"]]
+
+stopifnot(
+  "unique_varkey missing from data_process_LoughNeagh()" = is.data.frame(LN_varkey),
+  "Determinand Code/Name columns not found" =
+    all(c("Determinand Code", "Determinand Name") %in% names(LN_varkey))
+)
+
+unique_LoughNeagh_keys <- setNames(as.character(LN_varkey$`Determinand Code`),
+                                   LN_varkey$`Determinand Name`)
+
+
 ea_gcms_choices <-
   list(`Pharmaceuticals` = list( "Diphenyl ether","Ibuprofen", "Ketamine","Mirtazapine", "Phenanthrene"), #"Benzothiazole",
      `Fungicides` = list("Azoxystrobin", "Metalaxyl","Propiconazole", "Tebuconazole"="Tebuconazole (Terbuconazole)", "Thiabendazole"),
@@ -29,6 +45,18 @@ ea_gcms_choices <-
      `Others` = list("Caffeine","Cocaine", "2,4,7,9-Tetramethyl-5-decyne-4,7-diol"))
 
 ea_gcms_choices %>% unlist() %>% unname()
+
+var_substance_NI_Hunter <- c("Benzoylecgonine","Sulfapyridine","Valsartan",
+                             "Nicotine","Amphetamine","Trimethoprim","CBZ_epoxide",
+                             "Diclofenac","Metoprolol","Tramadol","Carbamazepine",
+                             "Lorazepam","Lidocaine","Ketamine","Bisoprolol",
+                             "Cocaine","Venlafaxine","Propanolol","Citalopram",
+                             "Diphenhydramine","Salicylic_acid","Caffeine",
+                             "Total_PPCP","Total_no_caff","Illicit_drugs",
+                             "Recreational","Antimicrobials","Mental_Health",
+                             "Cardiac","Cum_Therapeutic")
+
+
 
 ea_pollution_sliders <- function(id) {   
   
@@ -117,31 +145,6 @@ CIP_sliders <- function(id) {
      selectInput(NS(id,"variable_choices"), "Choose variable:",
                  choices = unique_EMPODAT_varnames,
                  selected = "fipronil"
-     )
-   )
- }
-  
- LoughNeagh_sliders <- function(id) {               
-   tagList(
-     HTML('<p align="center" style="font-weight: bold;color:orange">Note: please read key info regarding the semi-quantitative screen data <a href="https://environment.data.gov.uk/dataset/e85a7a52-7a75-4856-a0b3-8c6e4e303858" target="_blank">here</a></p>'),
-     
-     selectInput((NS(id,"gcms_compound")), 
-                 label = tooltip(
-                   trigger = list(
-                     "Choose compound:",
-                     bs_icon("info-circle")
-                   ),
-                   "We have only listed a small subset of the 1000+ chemicals available here."
-                 ),
-                 # change to groups: e.g. Vet med.
-                 choices = ea_gcms_choices,
-                 selected = "Phenanthrene"
-     ),
-     
-     sliderInput((NS(id,"year_slider")), "Select Year Range:",
-                 min = min(2013), max = max(2024),
-                 sep = "",
-                 value = c("2020", "2021"), animate = FALSE
      )
    )
  }
@@ -340,6 +343,39 @@ Biotoxins_sliders <- function(id) {
     p()
   )
 }
+
+
+Hunter_NI_sliders <- function(id) {
+  tagList(
+    selectInput(NS(id,"Hunter_NI_choice"), "Choose variable:",
+                choices = var_substance_NI_Hunter, selected = "Carbamazepine"
+    ),
+    checkboxInput(NS(id,"toggle_RQ"), "Show as risk quotient (RQ)?",value = FALSE),
+    checkboxInput(NS(id,"toggle_clustering"), "Toggle clustering of markers",value = FALSE),
+    p()
+  )
+}
+
+LoughNeagh_sliders <- function(id) {
+  tagList(
+    radioButtons(NS(id, "LoughNeagh_option"), "Chemistry or invertebrates",
+                 choices = c("Invertebrates" = "invertebrates",
+                             "Chemistry"     = "chemistry"),
+                 selected = "invertebrates"
+                 ),
+    selectInput(NS(id, "LoughNeagh_varchoice"), "Choose variable:",
+                choices = c("ASPT (WHPT)", "Biotic Score (WHPT)", "Number or Taxa (WHPT)")),
+    
+    sliderInput(NS(id, "year_slider"), "Select Year Range:",
+                min = 2015, max = 2026,
+                value = c(2020, 2021),
+                sep = "", step = 1, animate = FALSE),
+    
+    checkboxInput(NS(id, "toggle_clustering"), "Toggle clustering of markers", value = FALSE),
+    p()
+  )
+}
+
 
 
 csv_upload_sliders <- function(id) {   

@@ -12,20 +12,54 @@ library(scales)
 #' @return a \code{shiny::\link[shiny]{tagList}} containing UI elements
 #' 
 
+
 # note: if changing any of the dat choices, make sure you change them elsewhere too (app.R map switch, and output$ui_placeholder below)
-dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data",  
-                    "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
-                    "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
-                    "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
-                    "Pesticde risk to insects",
-                    "UKWIR Chemical Investigation Programme (CIP)"
-                    # "Wastewater treatment works (WwTW) info",
-                    #"NORMAN EMPODAT database",
-                    # "Lough Neagh Catchment Chemistry",
-                    #"Custom file upload (.csv)"
-                    )
+# dat_choices_pt <- c("EA pollution inventory 2021", "EA water quality GCMS/LCMS data (RISK)", "EA water quality GCMS/LCMS data",  
+#                     "Predatory Bird Monitoring Scheme", "PFAS", "HadUK-Grid Annual Rainfall", "APIENS",#
+#                     "EU Soil metals", "UK modelled air pollution emissions", "NAEI air pollution",
+#                     "UK cats and dogs density", "AgZero+ Input to Yield Ratio (IYR)", 
+#                     "Pesticde risk to insects",
+#                     "UKWIR Chemical Investigation Programme (CIP)",
+#                     "NI Pharmaceuticals (2024)",
+#                     # "Wastewater treatment works (WwTW) info",
+#                     #"NORMAN EMPODAT database",
+#                     "Lough Neagh Chemistry"#,
+#                     #"Custom file upload (.csv)"
+#                     )
+
+dat_choices_pt <- dat_choices_pt <- list(
+  `England` = list(
+    "EA pollution inventory 2021",
+    "EA water quality GCMS/LCMS data (RISK)",
+    "EA water quality GCMS/LCMS data",
+    "UKWIR Chemical Investigation Programme (CIP)"
+  ),
+  `Northern Ireland` = list(
+    "NI Pharmaceuticals (2024)",
+    "Lough Neagh Chemistry"
+  ),
+  `UK / Great Britain` = list(
+    "Predatory Bird Monitoring Scheme",
+    "PFAS",
+    "HadUK-Grid Annual Rainfall",
+    "APIENS",
+    "UK modelled air pollution emissions",
+    "NAEI air pollution",
+    "UK cats and dogs density",
+    "AgZero+ Input to Yield Ratio (IYR)",
+    "Pesticde risk to insects"
+  ),
+  `Europe` = list(
+    "EU Soil metals",
+    "NORMAN EMPODAT database"
+  )
+)
 
 dat_choices_TS <- c('Predatory Bird Monitoring Scheme')
+
+
+LoughNeagh_inv_choices <- c("ASPT (WHPT)", "Biotic Score (WHPT)", "Number or Taxa (WHPT)")
+
 
 csv_upload_mod_server <- function(id) {
   # module for CSV file upload
@@ -152,8 +186,10 @@ datselect_mod_server <-  function(id) {
         CIP_sliders(id)
       } else if (type == 'NORMAN EMPODAT database') {
         EMPODAT_sliders(id)
-      # } else if (type == 'Lough Neagh Catchment Chemistry') {
-      #   LoughNeagh_sliders(id)
+      } else if (type == 'Lough Neagh Chemistry') {
+        LoughNeagh_sliders(id)
+      } else if (type == 'NI Pharmaceuticals (2024)') {
+          Hunter_NI_sliders(id)
       } else if (type == 'AgZero+ Input to Yield Ratio (IYR)') {
         IYR_sliders(id)
       } else if (type ==   "Pesticde risk to insects") {
@@ -178,6 +214,37 @@ datselect_mod_server <-  function(id) {
       } else if (input$var_biota == 'Buzzard') {
         updateSelectInput(session, "var_map_sgl", choices = list(`metals` = metals_choices, `SGARs` = SGARs_choices))
       }    
+    })
+    
+
+    
+    # # update LoughNeagh_sliders selectinput for invertebrates
+    observeEvent(input$LoughNeagh_option, {
+      opt <- tolower(input$LoughNeagh_option)
+      message("[LN obs] option -> ", opt,
+              " | n chemistry keys = ", length(unique_LoughNeagh_keys))
+      
+      freezeReactiveValue(input, "LoughNeagh_varchoice")
+      
+      if (opt == "invertebrates") {
+        updateSelectInput(session, "LoughNeagh_varchoice",
+                          choices  = LoughNeagh_inv_choices,
+                          selected = LoughNeagh_inv_choices[1])
+      } else if (opt == "chemistry") {
+        if (length(unique_LoughNeagh_keys) == 0) {
+          warning("[LN obs] unique_LoughNeagh_keys is empty, cannot update dropdown")
+          return()
+        }
+        # updateSelectInput(session, "LoughNeagh_varchoice",
+        #                   choices  = unique_LoughNeagh_keys[1],
+        #                   selected = unique_LoughNeagh_keys[1])
+        
+        
+        updateSelectInput(session, "LoughNeagh_varchoice",
+                          choices  = c("112TCE (µg/l)", "ALK (mg/l)"),   #### <<<<<<< CAN ADD A LOT MORE OPTIONS
+                          selected = "112TCE (µg/l)")
+        
+      }
     })
     
     
@@ -270,7 +337,28 @@ datselect_mod_server <-  function(id) {
           data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
                                   start_year = input$year_slider[1],
                                   end_year = input$year_slider[2])          
+        } else if (type == 'Lough Neagh Chemistry') {
           
+          message("[Lough Neagh] option: ", input$LoughNeagh_option,
+                  " | varchoice: ", input$LoughNeagh_varchoice,
+                  " | keys class: ", paste(class(unique_LoughNeagh_keys), collapse = ","))
+          
+          req(input$LoughNeagh_option, input$LoughNeagh_varchoice)
+          
+          # not good: doesn't throw errors
+          #valid_keys <- if (input$LoughNeagh_option == 'invertebrates') LoughNeagh_inv_choices else unique_LoughNeagh_keys
+          
+          #req(input$LoughNeagh_varchoice %in% valid_keys)
+          
+          data_process_LoughNeagh(DeterminandKey     = input$LoughNeagh_varchoice,
+                                         LoughNeagh_option  = input$LoughNeagh_option,
+                                         year               = input$year_slider)[["filtered_data"]]
+
+          
+        } else if (type == 'NI Pharmaceuticals (2024)') {
+          data_process_Hunter_NI(NameDeterminandName= input$Hunter_NI_choice, 
+                                 RQ =input$toggle_RQ
+                                 )
         } else {
           data_process_EA_WQ_gcms(CompoundName = input$gcms_compound, 
                                   start_year = input$year_slider[1],
@@ -315,7 +403,7 @@ DT_mod_server <-  function(id, tbl_data) {
             
             # print(e$message)
             output$error_message <- renderUI({
-              div("Gridded data cannot be shown as a table")
+              div("Gridded data cannot be shown as a table")  # it seems to always show?
             })
             NULL
           
